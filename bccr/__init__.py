@@ -4,3 +4,5 @@
 
 from .download import api, downloadChart, readMonthYear, readYearMonth, readIndicatorYear, \
     readTitle
+
+from .scrape import findAllCharts

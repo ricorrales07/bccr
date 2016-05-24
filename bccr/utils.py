@@ -58,5 +58,3 @@ def seriesAsDict(series):
     alreadyDict = isinstance(series, dict)
     return series if alreadyDict else {chartNumber: '' for chartNumber in series}
 
-def findAllCharts():
-    urls = {'Precios': 'http://www.bccr.fi.cr/indicadores_economicos_/Indices_Precios.html'}

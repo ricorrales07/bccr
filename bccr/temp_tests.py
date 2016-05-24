@@ -30,4 +30,8 @@ print(api(125, 2010, 2015, excel=False))
 print(api(125, excel=False, open=True))
 
 '''
-print(readIndicatorYear({189: 'Real__', 230: 'Nominal__'}))
+#print(readIndicatorYear({189: 'Real__', 230: 'Nominal__'}))
+
+print(findAllCharts())
+
+#print(api(9,2012, 2014))

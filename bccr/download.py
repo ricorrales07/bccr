@@ -302,12 +302,30 @@ def readTitle(series):
 
     """
     if isinstance(series, int):
-        series = [series]
+        return fastTitle(series)
 
-    series = set(series)
+    series = set(series)  # to eliminate duplicates
 
-    rawdata = pd.DataFrame([downloadChart(v, quiet=True)['V0'][:2] for v in series])
+    rawdata = pd.DataFrame([fastTitle(v) for v in series])
     rawdata.index = series
     rawdata.columns = ['title', 'subtitle']
     return rawdata
 
+
+def fastTitle(chart):
+    """
+        Read title of a single chart. Optimized for speed: try to download as little data as possible, if it fails then
+        download using default dates
+    Parameters
+    ----------
+    chart   : chart number (integer)
+
+    Returns
+    -------
+            A pandas series with two elements (title and subtitle)
+    """
+    try:
+        txt = downloadChart(chart, 2015, 2015, quiet=True)['V0'][:2]
+    except:
+        txt = downloadChart(chart, quiet=True)['V0'][:2]
+    return txt
