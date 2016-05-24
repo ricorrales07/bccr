@@ -11,12 +11,13 @@ import numpy as np
 import pandas as pd
 import webbrowser
 import time
+import re
 
 from .utils import *
 
 
 pd.set_option('display.width', 500)
-
+pd.set_option('display.max_colwidth', 120)
 
 
 BCCR_URL = "http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/"
@@ -222,8 +223,12 @@ def readMonthYear(series, first=None, last=None, freq=None, func=None, quiet=Tru
         rawdata = downloadChart(chartNumber, first, last, quiet)
         varName = varName if varName else rawdata['V0'][0]
         h = findFirstElement('Enero', rawdata['V0'])
-        year0 = rawdata.iloc[h-1, 1]
-        rawdata.drop(rawdata.index[:h], inplace=True)
+
+        if 'Total' in str(rawdata.iloc[h-1, 0]):
+            year0 = rawdata.iloc[h-2, 1]
+        else:
+            year0 = rawdata.iloc[h - 1, 1]
+        rawdata.drop(rawdata.index[:h],inplace=True)
         del rawdata['V0']
         rawdata = tidy(rawdata.transpose().stack(dropna=False),
                        timeindex=pd.date_range(year0 + '/01', periods=rawdata.size, freq='M'),
@@ -329,3 +334,32 @@ def fastTitle(chart):
     except:
         txt = downloadChart(chart, quiet=True)['V0'][:2]
     return txt
+
+
+def findIndicators(expression, match_all=True):
+    """
+        Find indicators by (partial) name match
+    Parameters
+    ----------
+    expression  : A string to search in chart titles (case insensitive), terms separated by spaces
+    match_all   : match all terms if True, match any term if False
+
+    Returns
+    -------
+        A pandas dataframe with all charts whose titles contain a given string (case insensitive)
+
+    Examples
+    --------
+
+        >>> findIndicators('producto')
+        >>> findIndicators('tasa')
+        >>> findIndicators('precio consumidor')
+        >>> findIndicators('exportaciones importaciones')
+        >>> findIndicators('exportaciones importaciones', False)
+    """
+    indicators = pd.read_pickle('../data/indicators.pkl')
+    tt = [indicators['title'].apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
+    tt = pd.concat(tt, axis=1)
+    tt = tt.all(1) if match_all else tt.any(1)
+
+    return indicators.loc[tt, ['title', 'subtitle', 'function']]  #fixme function should later be removed

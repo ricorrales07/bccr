@@ -45,6 +45,8 @@ def findAllCharts():
         titlestable = readTitle(chartsList)
         titlestable['sector'] = sector
         print(titlestable)
+        pagesCharts[sector] = titlestable
 
     data = pd.concat(pagesCharts, axis=0)
+    data['sector'] = pd.Categorical(data['sector'])
     pd.to_pickle(data, 'datos.pkl')
