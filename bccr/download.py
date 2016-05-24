@@ -213,7 +213,6 @@ def readMonthYear(series, first=None, last=None, freq=None, func=None, quiet=Tru
         Once downloaded, the resulting pandas dataframe can be used for plots. The first line combines all series in a
         single plot, the latter displays a subplot for each series.
 
-        >>> data.plot()
         >>> data.plot(subplots=True)
     """
     series = seriesAsDict(series)
@@ -291,6 +290,77 @@ def readIndicatorYear(series, first=None, last=None, freq=None, func=None, quiet
 
     data = pd.concat(rawdataList, axis=1)
     return data
+
+
+def readDayYear(series, first=None, last=None, freq=None, func=None, quiet=False):
+    """
+        Reads BCCR charts where each row represents a day and each column represents a year.
+
+    Parameters
+    ----------
+    series  : Charts to be downloaded, either an integer or a {int: str} dictionary.
+    first   : The first year to download (integer, default=None).
+    last    : The last year to download (integer, default=None)
+    freq    : Data frequency (string, default=None).
+    func    : How to summarize data in lower frequency (function, default=np.mean)
+    quiet   : Print download info if False, nothing if True
+
+    Returns
+    -------
+        Requested data, either as a pandas series (if series is int) or dataframe (if series is dict)
+
+    Examples
+    --------
+        1. Download the Tasa basica (interest rate)
+
+        >>> readDayYear(17)
+
+        2. Download the Tasa basica (chart 17) and the exchange rate (chart 367), since 2000. Assign short names to series.
+
+        >>> series = {17: 'tbp', 367: 'xr'}
+        >>> readDayYear(series, first=2000)
+
+        3. Same series as before, but returning quarterly data by taking the average of daily data.
+
+        >>> data = readDayYear(series, freq='Q')
+
+        Once downloaded, the resulting pandas dataframe can be used for plots. Here, we plot data from September 2006 to
+        December 2009, showing each time series in a subplot.
+
+        >>> data.plot()
+        >>> data['2006-9':'2009-12'].plot(subplots=True)
+    """
+    series = seriesAsDict(series)
+
+    rawdataList = []
+    for chartNumber, varName in series.items():
+        rawdata = downloadChart(chartNumber, first, last, quiet)
+        varName = varName if varName else rawdata['V0'][0]
+        h = findFirstElement('1 Ene', rawdata['V0'])
+        year0 = rawdata.iloc[h - 1, 1]
+        rawdata.drop(rawdata.index[:h],inplace=True)
+        del rawdata['V0']
+
+        # deal with leap years
+        years = np.arange(int(year0), int(year0) + rawdata.shape[1])
+        nonleap = ~ is_leap_year(years)
+        rawdata.iloc[59, nonleap] = 'DELETE ME'   # row 59 = Feb 29 (counting from zero-base)
+        rawdata = rawdata.transpose().stack(dropna=False)
+        rawdata = rawdata[rawdata != 'DELETE ME']
+
+        rawdata = tidy(rawdata,
+                       timeindex=pd.date_range(year0 + '/01', periods=rawdata.size, freq='D'),
+                       freq=freq, func=func,
+                       colnames= varName)
+        rawdataList.append(rawdata)
+
+    data = pd.concat(rawdataList, axis=1)
+    return data
+
+
+
+
+
 
 
 def readTitle(series):
