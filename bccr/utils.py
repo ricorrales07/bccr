@@ -3,11 +3,11 @@ import pandas as pd
 import re
 
 
-def findFirstElement(pattern, stringList):
+def findFirstElement(pattern: str, stringList):
     idx = 0
 
     for element in list(stringList):
-        if re.match(pattern, str(element)):
+        if re.match(pattern, str(element), re.IGNORECASE):
             return idx
         else:
             idx += 1

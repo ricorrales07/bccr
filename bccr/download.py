@@ -239,7 +239,7 @@ def readMonthYear(series, first=None, last=None, freq=None, func=None, quiet=Tru
     return data
 
 
-def readIndicatorYear(series, first=None, last=None, freq=None, func=None, quiet=False):
+def readIndicatorYear(series, first=None, last=None, freq=None, func=None, quiet=True):
     """
         Reads BCCR charts where each row represents an indicator and each column represents a year.
 
@@ -284,6 +284,68 @@ def readIndicatorYear(series, first=None, last=None, freq=None, func=None, quiet
         rawdata = rawdata.transpose()
         rawdata = tidy(rawdata,
                        timeindex=pd.date_range(year0 + '/12', periods=rawdata.shape[0], freq='A'),
+                       freq=freq, func=func,
+                       colnames= [varName + v for v in indicators])
+        rawdataList.append(rawdata)
+
+    data = pd.concat(rawdataList, axis=1)
+    return data
+
+
+def readIndicatorQuarter(series, first=None, last=None, freq=None, func=None, quiet=True):
+    """
+        Reads BCCR charts where each row represents an indicator and each column represents a quarter.
+
+    Parameters
+    ----------
+    series  : Charts to be downloaded, either an integer or a {int: str} dictionary.
+    first   : The first year to download (integer, default=None).
+    last    : The last year to download (integer, default=None)
+    freq    : Data frequency (string, default=None).
+    func    : How to summarize data in lower frequency (function, default=np.mean)
+    quiet   : Print download info if False, nothing if True
+
+    Returns
+    -------
+        Requested data as a pandas dataframe
+
+    Examples
+    --------
+        1. Download data on number of workers by economic activity
+
+        >>> readIndicatorQuarter(1912)  #fixme all examples are wrong
+
+        2. Download quarterly data on national accounts, constant prices, by industry
+
+        >>> readIndicatorQuarter(64)
+
+        3. Download quarterly data on national accounts, constant and current prices.
+        Use *Real_* and *Nominal_* to tell them apart.
+
+        >>> readIndicatorQuarter({68: 'Real_', 70: 'Nominal_'})
+    """
+
+    series = seriesAsDict(series)
+
+    rawdataList = []
+    for chartNumber, varName in series.items():
+        rawdata = downloadChart(chartNumber, first, last, quiet)
+        h = findFirstElement('^trim', rawdata['V1'])
+        q0, year0 = [int(x) for x in re.findall("[-+]?\d+[\.]?\d*", rawdata.iloc[h, 1])]
+        if q0 not in range(1, 5):
+            if year0 in range(1, 5):
+                q0, year0 = year0, q0
+            else:
+                raise ValueError('Cannot identify the quarter')
+
+
+
+        rawdata.drop(rawdata.index[:h+1], inplace=True)
+        indicators = rawdata['V0']
+        del rawdata['V0']
+        rawdata = rawdata.transpose()
+        rawdata = tidy(rawdata,
+                       timeindex=pd.date_range('%d/%d' % (year0, 3*int(q0)), periods=rawdata.shape[0], freq='Q'),
                        freq=freq, func=func,
                        colnames= [varName + v for v in indicators])
         rawdataList.append(rawdata)
