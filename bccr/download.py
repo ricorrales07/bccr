@@ -331,19 +331,13 @@ def readIndicatorQuarter(series, first=None, last=None, freq=None, func=None, qu
     for chartNumber, varName in series.items():
         rawdata = downloadChart(chartNumber, first, last, quiet)
         h = findFirstElement('^trim', rawdata['V1'])
-        q0, year0 = [int(x) for x in re.findall("[-+]?\d+[\.]?\d*", rawdata.iloc[h, 1])]
-        if q0 not in range(1, 5):
-            if year0 in range(1, 5):
-                q0, year0 = year0, q0
-            else:
-                raise ValueError('Cannot identify the quarter')
-
+        quarter0 = parseQuarterYear(rawdata.iloc[h, 1])
         rawdata.drop(rawdata.index[:h+1], inplace=True)
         indicators = rawdata['V0']
         del rawdata['V0']
         rawdata = rawdata.transpose()
         rawdata = tidy(rawdata,
-                       timeindex=pd.date_range('%d/%d' % (year0, 3*int(q0)), periods=rawdata.shape[0], freq='Q'),
+                       timeindex=pd.date_range(quarter0, periods=rawdata.shape[0], freq='Q'),
                        freq=freq, func=func,
                        colnames= [varName + v for v in indicators])
         rawdataList.append(rawdata)
@@ -392,18 +386,13 @@ def readQuarterIndicator(series, first=None, last=None, freq=None, func=None, qu
     for chartNumber, varName in series.items():
         rawdata = downloadChart(chartNumber, first, last, quiet)
         h = findFirstElement('^trim', rawdata['V0'])
-        q0, year0 = [int(x) for x in re.findall("[-+]?\d+[\.]?\d*", rawdata.iloc[h, 0])]
-        if q0 not in range(1, 5):
-            if year0 in range(1, 5):
-                q0, year0 = year0, q0
-            else:
-                raise ValueError('Cannot identify the quarter')
+        quarter0 = parseQuarterYear(rawdata.iloc[h, 0])
 
         indicators = rawdata.iloc[h-1, 1:]
         rawdata.drop(rawdata.index[:h], inplace=True)
         del rawdata['V0']
         rawdata = tidy(rawdata,
-                       timeindex=pd.date_range('%d/%d' % (year0, 3*int(q0)), periods=rawdata.shape[0], freq='Q'),
+                       timeindex=pd.date_range(quarter0, periods=rawdata.shape[0], freq='Q'),
                        freq=freq, func=func,
                        colnames= [varName + v for v in indicators])
         rawdataList.append(rawdata)

@@ -57,3 +57,23 @@ def is_leap_year(years):
                           np.bitwise_or(years % 100 != 0,
                                         years % 400 == 0)
                           )
+
+
+def parseQuarterYear(txt: str):
+    """
+        Parses a string of form 'trimestre 2/2014' into '2014/6'
+    Parameters
+    ----------
+    txt :   A string with text and two integers, one representing the year and the other the quarter (1 to 4)
+
+    Returns
+    -------
+        A string representing the last month of the quarter, in yyyy/mm format.
+    """
+    q0, year0 = [int(x) for x in re.findall("[-+]?\d+[\.]?\d*", txt)]
+    if q0 not in range(1, 5):
+        if year0 in range(1, 5):
+            q0, year0 = year0, q0
+        else:
+            raise ValueError('Cannot identify the quarter')
+    return '%d/%d' % (year0, 3*int(q0))
