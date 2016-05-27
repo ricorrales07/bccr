@@ -12,6 +12,8 @@ import pandas as pd
 import webbrowser
 import time
 import re
+import os
+
 
 from .utils import *
 
@@ -469,7 +471,8 @@ def readDayYear(series, first=None, last=None, freq=None, func=None, quiet=False
     return data
 
 
-
+def comprar(ingreso, precio):
+    pass
 
 
 
@@ -538,7 +541,11 @@ def findIndicators(expression, match_all=True):
         >>> findIndicators('exportaciones importaciones')
         >>> findIndicators('exportaciones importaciones', False)
     """
-    indicators = pd.read_pickle('../data/indicators.pkl')
+    oldDir = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    indicators = pd.read_pickle('data/indicators.pkl')
+    os.chdir(oldDir)
+
     tt = [indicators['title'].apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
     tt = pd.concat(tt, axis=1)
     tt = tt.all(1) if match_all else tt.any(1)
