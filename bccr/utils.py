@@ -106,3 +106,24 @@ def loadIndicators():
     return indicators
 
 
+CHARTFREQUENCIES = {
+    'readMonthYear': 'M',
+    'readYearMonth': 'M',
+    'readIndicatorYear': 'Y',
+    'readIndicatorQuarter': 'Q',
+    'readQuarterIndicator': 'Q',
+    'readDayYear': 'D'
+}
+
+
+def lowestFrequency(freqs):
+    if 'Y' in freqs:
+        return 'Y'
+    if 'Q' in freqs:
+        return 'Q'
+    if 'M' in freqs:
+        return 'M'
+    if 'D' in freqs:
+        return 'D'
+
+    raise ValueError("Frequency must be any of 'Y', 'Q', 'M', or 'D'")
