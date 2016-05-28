@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import re
-
+import os
 
 def findFirstElement(pattern: str, stringList):
     idx = 0
@@ -43,12 +43,32 @@ def tidy(data, timeindex, freq, func, colnames):
     return resample(data, freq, func)
 
 
-def seriesAsDict(series):
-    if isinstance(series, int):
-        series = [series]
+def parseSeriesFreqInputs(series, func):
 
-    alreadyDict = isinstance(series, dict)
-    return series if alreadyDict else {chartNumber: '' for chartNumber in series}
+    # make a dictionary with series
+    if isinstance(series, int):
+        seriesdict = {series: ''}
+    elif isinstance(series, pd.Series):
+        seriesdict = dict(zip(series.index, series))
+    elif isinstance(series, list) or isinstance(series, tuple):
+        seriesdict = {chartNumber: '' for chartNumber in series}
+    elif isinstance(series, dict):
+        seriesdict = series
+    else:
+        raise ValueError('series must be integer, list of integers, dictionary, or pd.Series')
+
+    # make a dictionary with functions
+    if callable(func) or func is None:
+        funcdict = {a: func for a in seriesdict.keys()}
+    elif isinstance(func, dict):
+        funcdict = {ch: (func[ch] if ch in func.keys() else None) for ch in seriesdict.keys()}
+    else:
+        raise ValueError('func must be a callable, None, or a dictionary of callables (chart: callable pairs)')
+
+    return seriesdict, funcdict
+
+
+
 
 
 def is_leap_year(years):
@@ -77,3 +97,12 @@ def parseQuarterYear(txt: str):
         else:
             raise ValueError('Cannot identify the quarter')
     return '%d/%d' % (year0, 3*int(q0))
+
+def loadIndicators():
+    oldDir = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    indicators = pd.read_pickle('data/indicators.pkl')
+    os.chdir(oldDir)
+    return indicators
+
+
