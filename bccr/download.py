@@ -159,8 +159,7 @@ def readYearMonth(series, first=None, last=None, freq=None, func=None, quiet=Tru
         >>> data.plot()
         >>> data.plot(subplots=True)
     """
-
-    series = seriesAsDict(series)
+    series, funcs = parseSeriesFreqInputs(series, func)
 
     rawdataList = []
     for chartNumber, varName in series.items():
@@ -168,11 +167,11 @@ def readYearMonth(series, first=None, last=None, freq=None, func=None, quiet=Tru
         varName = varName if varName else rawdata['V0'][0]
         h = findFirstElement('Enero', rawdata['V1'])
         rawdata.drop(rawdata.index[:h + 1], inplace=True)
-        year0 = rawdata.iloc[0, 0]
+        year0 = rawdata.iat[0, 0]
         del rawdata['V0']
         rawdata = tidy(rawdata.stack(dropna=False),
                        timeindex=pd.date_range(year0 + '/01', periods=rawdata.size, freq='M'),
-                       freq=freq, func=func,
+                       freq=freq, func=funcs[chartNumber],
                        colnames= varName)
         rawdataList.append(rawdata)
 
@@ -217,7 +216,7 @@ def readMonthYear(series, first=None, last=None, freq=None, func=None, quiet=Tru
 
         >>> data.plot(subplots=True)
     """
-    series = seriesAsDict(series)
+    series, funcs = parseSeriesFreqInputs(series, func)
 
     rawdataList = []
     for chartNumber, varName in series.items():
@@ -226,14 +225,14 @@ def readMonthYear(series, first=None, last=None, freq=None, func=None, quiet=Tru
         h = findFirstElement('Enero', rawdata['V0'])
 
         if 'Total' in str(rawdata.iloc[h-1, 0]):
-            year0 = rawdata.iloc[h-2, 1]
+            year0 = rawdata.iat[h-2, 1]
         else:
-            year0 = rawdata.iloc[h - 1, 1]
+            year0 = rawdata.iat[h - 1, 1]
         rawdata.drop(rawdata.index[:h],inplace=True)
         del rawdata['V0']
         rawdata = tidy(rawdata.transpose().stack(dropna=False),
                        timeindex=pd.date_range(year0 + '/01', periods=rawdata.size, freq='M'),
-                       freq=freq, func=func,
+                       freq=freq, func=funcs[chartNumber],
                        colnames= varName)
         rawdataList.append(rawdata)
 
@@ -273,20 +272,20 @@ def readIndicatorYear(series, first=None, last=None, freq=None, func=None, quiet
         >>> readIndicatorYear({189: 'Real_', 230: 'Nominal_'})
     """
 
-    series = seriesAsDict(series)
+    series, funcs = parseSeriesFreqInputs(series, func)
 
     rawdataList = []
     for chartNumber, varName in series.items():
         rawdata = downloadChart(chartNumber, first, last, quiet)
         h = findFirstElement('^[12]', rawdata['V1'])
-        year0 = rawdata.iloc[h, 1]
+        year0 = rawdata.iat[h, 1]
         rawdata.drop(rawdata.index[:h+1], inplace=True)
         indicators = rawdata['V0']
         del rawdata['V0']
         rawdata = rawdata.transpose()
         rawdata = tidy(rawdata,
                        timeindex=pd.date_range(year0 + '/12', periods=rawdata.shape[0], freq='A'),
-                       freq=freq, func=func,
+                       freq=freq, func=funcs[chartNumber],
                        colnames= [varName + v for v in indicators])
         rawdataList.append(rawdata)
 
@@ -327,7 +326,7 @@ def readIndicatorQuarter(series, first=None, last=None, freq=None, func=None, qu
         >>> readIndicatorQuarter({68: 'Real_', 70: 'Nominal_'})
     """
 
-    series = seriesAsDict(series)
+    series, funcs = parseSeriesFreqInputs(series, func)
 
     rawdataList = []
     for chartNumber, varName in series.items():
@@ -340,7 +339,7 @@ def readIndicatorQuarter(series, first=None, last=None, freq=None, func=None, qu
         rawdata = rawdata.transpose()
         rawdata = tidy(rawdata,
                        timeindex=pd.date_range(quarter0, periods=rawdata.shape[0], freq='Q'),
-                       freq=freq, func=func,
+                       freq=freq, func=funcs[chartNumber],
                        colnames= [varName + v for v in indicators])
         rawdataList.append(rawdata)
 
@@ -382,7 +381,7 @@ def readQuarterIndicator(series, first=None, last=None, freq=None, func=None, qu
         >>> readIndicatorQuarter({68: 'Real_', 70: 'Nominal_'})
     """
 
-    series = seriesAsDict(series)
+    series, funcs = parseSeriesFreqInputs(series, func)
 
     rawdataList = []
     for chartNumber, varName in series.items():
@@ -395,7 +394,7 @@ def readQuarterIndicator(series, first=None, last=None, freq=None, func=None, qu
         del rawdata['V0']
         rawdata = tidy(rawdata,
                        timeindex=pd.date_range(quarter0, periods=rawdata.shape[0], freq='Q'),
-                       freq=freq, func=func,
+                       freq=freq, func=funcs[chartNumber],
                        colnames= [varName + v for v in indicators])
         rawdataList.append(rawdata)
 
@@ -443,14 +442,14 @@ def readDayYear(series, first=None, last=None, freq=None, func=None, quiet=False
         >>> data.plot()
         >>> data['2006-9':'2009-12'].plot(subplots=True)
     """
-    series = seriesAsDict(series)
+    series, funcs = parseSeriesFreqInputs(series, func)
 
     rawdataList = []
     for chartNumber, varName in series.items():
         rawdata = downloadChart(chartNumber, first, last, quiet)
         varName = varName if varName else rawdata['V0'][0]
         h = findFirstElement('1 Ene', rawdata['V0'])
-        year0 = rawdata.iloc[h - 1, 1]
+        year0 = rawdata.iat[h - 1, 1]
         rawdata.drop(rawdata.index[:h],inplace=True)
         del rawdata['V0']
 
@@ -463,7 +462,7 @@ def readDayYear(series, first=None, last=None, freq=None, func=None, quiet=False
 
         rawdata = tidy(rawdata,
                        timeindex=pd.date_range(year0 + '/01', periods=rawdata.size, freq='D'),
-                       freq=freq, func=func,
+                       freq=freq, func=funcs[chartNumber],
                        colnames= varName)
         rawdataList.append(rawdata)
 
@@ -541,13 +540,72 @@ def findIndicators(expression, match_all=True):
         >>> findIndicators('exportaciones importaciones')
         >>> findIndicators('exportaciones importaciones', False)
     """
-    oldDir = os.getcwd()
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    indicators = pd.read_pickle('data/indicators.pkl')
-    os.chdir(oldDir)
+    indicators = loadIndicators()
 
     tt = [indicators['title'].apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
     tt = pd.concat(tt, axis=1)
     tt = tt.all(1) if match_all else tt.any(1)
 
     return indicators.loc[tt, ['title', 'subtitle', 'function']]  #fixme function should later be removed
+
+
+
+READMETHODS = {
+    'readMonthYear': readMonthYear,
+    'readYearMonth': readYearMonth,
+    'readIndicatorYear': readIndicatorYear,
+    'readIndicatorQuarter': readIndicatorQuarter,
+    'readQuarterIndicator': readQuarterIndicator,
+    'readDayYear': readDayYear
+}
+
+
+
+
+
+
+
+def read(series, first=None, last=None, freq=None, func=None, quiet=True):
+    """
+        Reads BCCR charts.
+        * This function allows downloading of charts of different formats in a single call.
+        * If no frequency parameter is specified, then it will return the lowest frequency
+        found in the data sets.
+         * If no func parameter is specified, then higher-to lower conversion is done by taking the
+         average of the data. By using a dictionary, user can specify different conversion methods for
+         different charts.
+
+    Parameters
+    ----------
+    series  : Charts to be downloaded, either an integer or a {int: str} dictionary.
+    first   : The first year to download (integer, default=None).
+    last    : The last year to download (integer, default=None)
+    freq    : Data frequency (string, default=None).
+    func    : How to summarize data in lower frequency (function, default=np.mean)
+    quiet   : Print download info if False, nothing if True
+
+    Returns
+    -------
+        Requested data, either as a pandas series (if series is int) or dataframe (if series is dict)
+
+    """
+
+    series, funcs = parseSeriesFreqInputs(series, func)
+    indicators = loadIndicators().loc[list(series.keys()), ['title', 'function']]
+
+    if freq is None:
+        original_frequencies = set([CHARTFREQUENCIES[k] for k in indicators['function']])
+        if len(original_frequencies) > 1:
+            freq = lowestFrequency(original_frequencies)
+            print('\nDownloading data with frequencies : %s !!!' % original_frequencies)
+            print('Returning frequency: %s\n' % freq)
+
+
+
+    rawdataList = []
+    for method, subseries in indicators.groupby('function'):
+        minidata = READMETHODS[method](subseries['title'], first, last, freq, funcs, quiet)
+        rawdataList.append(minidata)
+
+    data = pd.concat(rawdataList, axis=1)
+    return data

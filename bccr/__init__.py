@@ -3,6 +3,6 @@
 """
 
 from .download import api, downloadChart, readMonthYear, readYearMonth, readIndicatorYear, \
-    readTitle, findIndicators, readDayYear, readIndicatorQuarter, readQuarterIndicator
+    readTitle, findIndicators, readDayYear, readIndicatorQuarter, readQuarterIndicator, read
 
 from .scrape import findAllCharts
