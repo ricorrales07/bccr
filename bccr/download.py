@@ -7,22 +7,16 @@ Randall Romero-Aguilar
 May 2016
 """
 
-import numpy as np
-import pandas as pd
-import webbrowser
 import time
-import re
-import os
-
+import webbrowser
 
 from .utils import *
-
 
 pd.set_option('display.width', 500)
 pd.set_option('display.max_colwidth', 120)
 
 
-BCCR_URL = "http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/"
+
 
 
 def api(chart, first=None, last=None, excel=True, open=False):
@@ -68,7 +62,8 @@ def api(chart, first=None, last=None, excel=True, open=False):
         >>> api(125, excel=False, open=True)  # opens link in browser
         http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125
     """
-    bccr_web = BCCR_URL + "Cuadros/frmVerCatCuadro.aspx?"
+    bccr_web = "http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/"
+    bccr_web += "Cuadros/frmVerCatCuadro.aspx?"
     bccr_web += "CodCuadro=%s" % chart
     bccr_web += "&FecInicial=%s/01/01" % first if first else ""
     bccr_web += "&FecFinal=%s/12/31" % last if last else ""
@@ -109,18 +104,29 @@ def downloadChart(chart, first=None, last=None, quiet=False):
         >>> downloadChart(138, 2011, 2015, quiet=True)
     """
     rawdata = pd.read_html(api(chart, first, last), thousands="")[0]
-    rawdata.columns = ['V%s' % k for k in range(rawdata.shape[1])]
+    title, subtitle, subts2 = rawdata.iloc[:3, 0]
+    if not pd.isnull(subts2):
+        subtitle += ' --- %s' % subts2
+
+    rawdata.index = rawdata.iloc[:, 0]
+    rawdata.drop(0, axis=1, inplace=True)
+    h = findColumnTitles(rawdata)
+    rawdata.columns = rawdata.iloc[h]
+    rawdata = rawdata.iloc[h+1:].applymap(fixCommas)
 
     if not quiet:
         info = 'Downloading chart %s:' % chart
-        for txt in rawdata['V0'][:2]:
-            info += ('\n\t' + txt) if txt else ''
+        info += ('\n\t' + title) if title else ''
+        info += ('\n\t' + subtitle) if subtitle else ''
         info += '\n\tRetrieved %s from:' % time.strftime("%c")
-        info += '\n\t\t' + api(chart, first, last, excel=False) + '\n'
+        info += '\n\t' + api(chart, first, last, excel=False) + '\n'
         print(info)
 
-    return rawdata
+    return rawdata, title, subtitle
 
+
+
+'''  OLD CODE
 def readYearMonth(series, first=None, last=None, freq=None, func=None, quiet=True):
     """
         Reads BCCR charts where each row represents a year and each column represents a month.
@@ -163,12 +169,9 @@ def readYearMonth(series, first=None, last=None, freq=None, func=None, quiet=Tru
 
     rawdataList = []
     for chartNumber, varName in series.items():
-        rawdata = downloadChart(chartNumber, first, last, quiet)
-        varName = varName if varName else rawdata['V0'][0]
-        h = findFirstElement('Enero', rawdata['V1'])
-        rawdata.drop(rawdata.index[:h + 1], inplace=True)
-        year0 = rawdata.iat[0, 0]
-        del rawdata['V0']
+        rawdata, title, subtitle = downloadChart(chartNumber, first, last, quiet)
+        varName = varName if varName else title
+        year0 = rawdata.index[0]
         rawdata = tidy(rawdata.stack(dropna=False),
                        timeindex=pd.date_range(year0 + '/01', periods=rawdata.size, freq='M'),
                        freq=freq, func=funcs[chartNumber],
@@ -402,6 +405,64 @@ def readQuarterIndicator(series, first=None, last=None, freq=None, func=None, qu
     return data
 
 
+def readMonthIndicator(series, first=None, last=None, freq=None, func=None, quiet=True):
+    """
+        Reads BCCR charts where each row represents a month and each column represents an indicator.
+
+    Parameters
+    ----------
+    series  : Charts to be downloaded, either an integer or a {int: str} dictionary.
+    first   : The first year to download (integer, default=None).
+    last    : The last year to download (integer, default=None)
+    freq    : Data frequency (string, default=None).
+    func    : How to summarize data in lower frequency (function, default=np.mean)
+    quiet   : Print download info if False, nothing if True
+
+    Returns
+    -------
+        Requested data as a pandas dataframe
+
+    Examples
+    --------
+        1. Download data on number of workers by economic activity
+
+        >>> readIndicatorQuarter(1912)  # FIXME UPDATE DOCUMENTATION
+
+        2. Download quarterly data on national accounts, constant prices, by industry
+
+        >>> readIndicatorQuarter(64)
+
+        3. Download quarterly data on national accounts, constant and current prices.
+        Use *Real_* and *Nominal_* to tell them apart.
+
+        >>> readIndicatorQuarter({68: 'Real_', 70: 'Nominal_'})
+    """
+
+    series, funcs = parseSeriesFreqInputs(series, func)
+
+    rawdataList = []
+    for chartNumber, varName in series.items():
+        rawdata = downloadChart(chartNumber, first, last, quiet)
+
+        hs = findFirstElement('^ene', rawdata['V0'])
+
+
+
+        quarter0 = parseQuarterYear(rawdata.iloc[h, 0])
+
+        indicators = rawdata.iloc[h-1, 1:]
+        rawdata.drop(rawdata.index[:h], inplace=True)
+        del rawdata['V0']
+        rawdata = tidy(rawdata,
+                       timeindex=pd.date_range(quarter0, periods=rawdata.shape[0], freq='Q'),
+                       freq=freq, func=funcs[chartNumber],
+                       colnames= [varName + v for v in indicators])
+        rawdataList.append(rawdata)
+
+    data = pd.concat(rawdataList, axis=1)
+    return data
+
+
 
 
 def readDayYear(series, first=None, last=None, freq=None, func=None, quiet=False):
@@ -469,143 +530,8 @@ def readDayYear(series, first=None, last=None, freq=None, func=None, quiet=False
     data = pd.concat(rawdataList, axis=1)
     return data
 
-
-def comprar(ingreso, precio):
-    pass
+'''
 
 
 
 
-def readTitle(series):
-    """
-        Reads the title and subtitle of indicated series
-
-    Parameters
-    ----------
-    series  : An iterable of integers, indicating chart numbers
-
-    Returns
-    -------
-        A pandas dataframe, indexed by chart numbers
-
-    """
-    if isinstance(series, int):
-        return fastTitle(series)
-
-    series = set(series)  # to eliminate duplicates
-
-    rawdata = pd.DataFrame([fastTitle(v) for v in series])
-    rawdata.index = series
-    rawdata.columns = ['title', 'subtitle']
-    return rawdata
-
-
-def fastTitle(chart):
-    """
-        Read title of a single chart. Optimized for speed: try to download as little data as possible, if it fails then
-        download using default dates
-    Parameters
-    ----------
-    chart   : chart number (integer)
-
-    Returns
-    -------
-            A pandas series with two elements (title and subtitle)
-    """
-    try:
-        txt = downloadChart(chart, 2015, 2015, quiet=True)['V0'][:2]
-    except:
-        txt = downloadChart(chart, quiet=True)['V0'][:2]
-    return txt
-
-
-def findIndicators(expression, match_all=True):
-    """
-        Find indicators by (partial) name match
-    Parameters
-    ----------
-    expression  : A string to search in chart titles (case insensitive), terms separated by spaces
-    match_all   : match all terms if True, match any term if False
-
-    Returns
-    -------
-        A pandas dataframe with all charts whose titles contain a given string (case insensitive)
-
-    Examples
-    --------
-
-        >>> findIndicators('producto')
-        >>> findIndicators('tasa')
-        >>> findIndicators('precio consumidor')
-        >>> findIndicators('exportaciones importaciones')
-        >>> findIndicators('exportaciones importaciones', False)
-    """
-    indicators = loadIndicators()
-
-    tt = [indicators['title'].apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
-    tt = pd.concat(tt, axis=1)
-    tt = tt.all(1) if match_all else tt.any(1)
-
-    return indicators.loc[tt, ['title', 'subtitle', 'function']]  #fixme function should later be removed
-
-
-
-READMETHODS = {
-    'readMonthYear': readMonthYear,
-    'readYearMonth': readYearMonth,
-    'readIndicatorYear': readIndicatorYear,
-    'readIndicatorQuarter': readIndicatorQuarter,
-    'readQuarterIndicator': readQuarterIndicator,
-    'readDayYear': readDayYear
-}
-
-
-
-
-
-
-
-def read(series, first=None, last=None, freq=None, func=None, quiet=True):
-    """
-        Reads BCCR charts.
-        * This function allows downloading of charts of different formats in a single call.
-        * If no frequency parameter is specified, then it will return the lowest frequency
-        found in the data sets.
-         * If no func parameter is specified, then higher-to lower conversion is done by taking the
-         average of the data. By using a dictionary, user can specify different conversion methods for
-         different charts.
-
-    Parameters
-    ----------
-    series  : Charts to be downloaded, either an integer or a {int: str} dictionary.
-    first   : The first year to download (integer, default=None).
-    last    : The last year to download (integer, default=None)
-    freq    : Data frequency (string, default=None).
-    func    : How to summarize data in lower frequency (function, default=np.mean)
-    quiet   : Print download info if False, nothing if True
-
-    Returns
-    -------
-        Requested data, either as a pandas series (if series is int) or dataframe (if series is dict)
-
-    """
-
-    series, funcs = parseSeriesFreqInputs(series, func)
-    indicators = loadIndicators().loc[list(series.keys()), ['title', 'function']]
-
-    if freq is None:
-        original_frequencies = set([CHARTFREQUENCIES[k] for k in indicators['function']])
-        if len(original_frequencies) > 1:
-            freq = lowestFrequency(original_frequencies)
-            print('\nDownloading data with frequencies : %s !!!' % original_frequencies)
-            print('Returning frequency: %s\n' % freq)
-
-
-
-    rawdataList = []
-    for method, subseries in indicators.groupby('function'):
-        minidata = READMETHODS[method](subseries['title'], first, last, freq, funcs, quiet)
-        rawdataList.append(minidata)
-
-    data = pd.concat(rawdataList, axis=1)
-    return data
