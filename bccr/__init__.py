@@ -2,7 +2,6 @@
 
 """
 
-from .download import api, downloadChart, readMonthYear, readYearMonth, readIndicatorYear, \
-    readTitle, findIndicators, readDayYear, readIndicatorQuarter, readQuarterIndicator, read
-
-from .scrape import findAllCharts
+from .download import api, downloadChart
+from .fetch import parse, read
+from .scrape import findIndicators, findAllCharts

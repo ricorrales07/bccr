@@ -1,7 +1,7 @@
+import re
 import numpy as np
 import pandas as pd
-import re
-import os
+
 
 def findFirstElement(pattern: str, stringList):
     idx = 0
@@ -17,6 +17,7 @@ def findFirstElement(pattern: str, stringList):
 
 def fixCommas(x):
     return float(x.replace(",", ".")) if isinstance(x, str) else x
+
 
 def resample(series, freq, func):
     if func is None:
@@ -98,27 +99,43 @@ def parseQuarterYear(txt: str):
             raise ValueError('Cannot identify the quarter')
     return '%d/%d' % (year0, 3*int(q0))
 
-def loadIndicators():
-    oldDir = os.getcwd()
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    indicators = pd.read_pickle('data/indicators.pkl')
-    os.chdir(oldDir)
-    return indicators
+
+def parseMonthYear(txt: str):
+    """
+        Parses a string of form 'trimestre 2/2014' into '2014/6'
+    Parameters
+    ----------
+    txt :   A string with text and two integers, one representing the year and the other the quarter (1 to 4)
+
+    Returns
+    -------
+        A string representing the last month of the quarter, in yyyy/mm format.
+    """
+    year0 = [int(x) for x in re.findall("[-+]?\d+[\.]?\d*", txt)]
+
+    return   #'%d/%d' % (year0, 3*int(q0))
 
 
-CHARTFREQUENCIES = {
-    'readMonthYear': 'M',
-    'readYearMonth': 'M',
-    'readIndicatorYear': 'Y',
-    'readIndicatorQuarter': 'Q',
-    'readQuarterIndicator': 'Q',
-    'readDayYear': 'D'
+MONTHS = {
+    'Enero' : 1,
+    'Febrero' : 2,
+    'Marzo' : 3,
+    'Abril' : 4,
+    'Mayo' : 5,
+    'Junio' : 6,
+    'Julio' : 7,
+    'Agosto' : 8,
+    'Septiembre' : 9,
+    'Octubre' : 10,
+    'Noviembre' : 11,
+    'Diciembre' : 12
 }
 
 
+
 def lowestFrequency(freqs):
-    if 'Y' in freqs:
-        return 'Y'
+    if 'A' in freqs:
+        return 'A'
     if 'Q' in freqs:
         return 'Q'
     if 'M' in freqs:
@@ -126,4 +143,10 @@ def lowestFrequency(freqs):
     if 'D' in freqs:
         return 'D'
 
-    raise ValueError("Frequency must be any of 'Y', 'Q', 'M', or 'D'")
+    raise ValueError("Frequency must be any of 'A' (annual), 'Q' (quarterly), 'M' (monthly), or 'D' (daily)")
+
+def findColumnTitles(data: pd.DataFrame):
+    values = ~np.any(data.isnull().values, 1)
+    return np.where(values)[0].min()
+
+
