@@ -1,6 +1,6 @@
 from bccr import *
-# import matplotlib.pyplot as plt
-# import seaborn
+import matplotlib.pyplot as plt
+import seaborn
 
 
 #print(downloadChart(125, 2012, 2015))
@@ -32,6 +32,18 @@ print(api(125, excel=False, open=True))
 '''
 #print(readIndicatorYear({189: 'Real__', 230: 'Nominal__'}))
 
-print(findAllCharts())
+#data = readDayYear([17, 367], quiet=False)
+#data['2006-9':'2009-12'].plot(subplots=True)
+#plt.show()
+
+#print(findIndicators('export import', False))
 
 #print(api(9,2012, 2014))
+#print(readMonthYear([28, 29], quiet=False))
+
+#readIndicatorQuarter(70, quiet=False).plot(subplots=True, layout=(-1, 3))
+#plt.show()
+
+print(api(9, excel=False, open=False))
+
+#findIndicators('precios')
