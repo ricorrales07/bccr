@@ -16,7 +16,7 @@ def findFirstElement(pattern: str, stringList):
 
 
 def fixCommas(x):
-    return float(x.replace(",", ".")) if isinstance(x, str) else x
+    return float(x.replace(".", "").replace(",", ".")) if isinstance(x, str) else x
 
 
 def resample(series, freq, func):
@@ -111,42 +111,25 @@ def parseMonthYear(txt: str):
     -------
         A string representing the last month of the quarter, in yyyy/mm format.
     """
-    year0 = [int(x) for x in re.findall("[-+]?\d+[\.]?\d*", txt)]
+    month0 = MONTHS.apply(lambda x: bool(re.match(x, txt, re.IGNORECASE))).argmax()
+    year0 = re.findall("[-+]?\d+[\.]?\d*", txt)[0]
+    return year0 + '/' + str(month0)
 
-    return   #'%d/%d' % (year0, 3*int(q0))
 
+MONTHS = pd.Series(['Enero', 'Febrero','Marzo', 'Abril', 'Mayo', 'Junio',
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+                   index=range(1,13))
 
-MONTHS = {
-    'Enero' : 1,
-    'Febrero' : 2,
-    'Marzo' : 3,
-    'Abril' : 4,
-    'Mayo' : 5,
-    'Junio' : 6,
-    'Julio' : 7,
-    'Agosto' : 8,
-    'Septiembre' : 9,
-    'Octubre' : 10,
-    'Noviembre' : 11,
-    'Diciembre' : 12
-}
-
+FREQS = pd.Series(range(4), index=['A', 'Q', 'M', 'D'])  # lower to higher frequencies
 
 
 def lowestFrequency(freqs):
-    if 'A' in freqs:
-        return 'A'
-    if 'Q' in freqs:
-        return 'Q'
-    if 'M' in freqs:
-        return 'M'
-    if 'D' in freqs:
-        return 'D'
+    original_frequencies = set([f[0].upper() for f in freqs])
+    return FREQS[original_frequencies].argmin()
 
-    raise ValueError("Frequency must be any of 'A' (annual), 'Q' (quarterly), 'M' (monthly), or 'D' (daily)")
 
 def findColumnTitles(data: pd.DataFrame):
-    values = ~np.any(data.isnull().values, 1)
+    values = np.any(data.notnull().values, 1)
     return np.where(values)[0].min()
 
 

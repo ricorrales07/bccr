@@ -1,9 +1,6 @@
-from bccr import *
-import matplotlib.pyplot as plt
-import seaborn
-
-
 #print(downloadChart(125, 2012, 2015))
+from bccr import *
+import numpy as np
 
 '''
 print(api(125, 2010, 2015))
@@ -44,6 +41,21 @@ print(api(125, excel=False, open=True))
 #readIndicatorQuarter(70, quiet=False).plot(subplots=True, layout=(-1, 3))
 #plt.show()
 
-print(api(9, excel=False, open=False))
+#print(api(20, excel=True, open=True))
 
-#findIndicators('precios')
+#print(read([28, 29], quiet=False))
+#read(125)
+#updateIndicators()
+
+
+#downloadChart(125)
+
+#search('precios')
+
+#print(read([125, 19, 68, 70, 138, 367, 17], 2014, 2015, quiet=False))
+#print(read([17, 19], 2014, 2015, freq='M', func={17:np.mean, 19:'last'}, quiet=False))
+
+#print(read({8:'netas', 15:'brutas'}, quiet=False))
+
+read([125, 17])
+ipc = parse(2732,'MonthIndicator','IPC_')

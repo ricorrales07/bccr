@@ -1,28 +1,27 @@
 import os
 import re
-
-from bs4 import BeautifulSoup
 import requests
-import webbrowser
 import pandas as pd
+from bs4 import BeautifulSoup
 
-from .download import downloadChart
+from .download import api
 
 
 CHARTFREQUENCIES = {
-    'readMonthYear': 'Monthly',
-    'readYearMonth': 'Monthly',
-    'readIndicatorYear': 'Annual',
-    'readIndicatorQuarter': 'Quarterly',
-    'readIndicatorMonth': 'Monthly',
-    'readQuarterIndicator': 'Quarterly',
-    'readDayYear': 'Daily',
+    'MonthYear': 'Monthly',
+    'YearMonth': 'Monthly',
+    'IndicatorYear': 'Annual',
+    'IndicatorQuarter': 'Quarterly',
+    'IndicatorMonth': 'Monthly',
+    'QuarterIndicator': 'Quarterly',
+    'MonthIndicator': 'Monthly',
+    'DayYear': 'Daily',
     'NOT-SUPPORTED-YET': 'unknown'
 }
 
 
 
-def fastTitle(chart):
+def fastTitle(chart, quiet=True):
     """
         Read title of a single chart. Optimized for speed: try to download as little data as possible, if it fails then
         download using default dates
@@ -34,17 +33,24 @@ def fastTitle(chart):
     -------
             A pandas series with two elements (title and subtitle)
     """
+
+    if not quiet:
+        print(api(chart, excel=False))
+
     try:
-        data, title, subtitle = downloadChart(chart, 2015, 2015, quiet=True)
+        rawdata = pd.read_html(api(chart, 2015, 2015), thousands="")[0]
     except:
-        data, title, subtitle = downloadChart(chart, quiet=True)
+        rawdata = pd.read_html(api(chart), thousands="")[0]
+
     df = pd.DataFrame(index=[chart])
-    df['title'] = title
-    df['subtitle'] = subtitle
+    df['title'], df['subtitle'], subts2 = rawdata.iloc[:3, 0]
+    if not pd.isnull(subts2):
+        df['subtitle'] += ' --- %s' % subts2
+
     return df
 
 
-def readTitle(series):
+def readTitle(series, quiet=True):
     """
         Reads the title and subtitle of indicated series
 
@@ -58,7 +64,7 @@ def readTitle(series):
 
     """
     seriesSet = [series] if isinstance(series, int) else set(series)
-    return pd.concat([fastTitle(v) for v in seriesSet])
+    return pd.concat([fastTitle(v, quiet) for v in seriesSet])
 
 
 
@@ -69,19 +75,21 @@ def readTitle(series):
 def findAllCharts():
     baseURL = 'http://www.bccr.fi.cr/indicadores_economicos_/'
 
-    pages = ['Indices_Precios',
-             'finanzas_publicas',
-             'Mercados_negociacion',
-             'Monetario_financiero',
-             'Produccion_empleo',
-             'Sector_Externo',
-             'Tasas_interes',
-             'Tipos_cambio']
+    pages = [
+        'Encuestas_economicas',
+        'Indices_Precios',
+        'finanzas_publicas',
+        'Mercados_negociacion',
+        'Monetario_financiero',
+        'Produccion_empleo',
+        'Sector_Externo',
+        'Tasas_interes',
+        'Tipos_cambio']
 
     urls = {page: baseURL + page + '.html' for page in pages}
 
 
-    pagesCharts = {}
+    pagesCharts = []
     for sector, url in urls.items():
 
         chartsList = list()
@@ -100,17 +108,19 @@ def findAllCharts():
             if 'CodCuadro=' in link:
                 chartsList.append(int(link.split('CodCuadro=')[1]))
 
-
-
-
-        titlestable = readTitle(chartsList)
+        titlestable = readTitle(chartsList, False)
         titlestable['sector'] = sector
         print(titlestable)
-        pagesCharts[sector] = titlestable
+        pagesCharts.append(titlestable)
 
     data = pd.concat(pagesCharts, axis=0)
     data['sector'] = pd.Categorical(data['sector'])
-    pd.to_pickle(data, 'datos.pkl')
+
+    '''SAVE THE DATA'''
+    oldDir = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    pd.to_pickle(data, './data/asReadFromBCCR.pkl')
+    os.chdir(oldDir)
 
 
 
@@ -118,7 +128,9 @@ def findAllCharts():
 
 
 
-def findIndicators(expression, match_all=True):
+
+
+def search(expression, match_all=True):
     """
         Find indicators by (partial) name match
     Parameters
@@ -133,22 +145,21 @@ def findIndicators(expression, match_all=True):
     Examples
     --------
 
-        >>> findIndicators('producto')
-        >>> findIndicators('tasa')
-        >>> findIndicators('precio consumidor')
-        >>> findIndicators('exportaciones importaciones')
-        >>> findIndicators('exportaciones importaciones', False)
+        >>> search('producto')
+        >>> search('tasa')
+        >>> search('precio consumidor')
+        >>> search('exportaciones importaciones')
+        >>> search('exportaciones importaciones', False)
     """
     indicators = loadIndicators()
 
     tt = [indicators['title'].apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
     tt = pd.concat(tt, axis=1)
     tt = tt.all(1) if match_all else tt.any(1)
-    results = indicators.loc[tt, ['title', 'subtitle', 'function']]
+    results = indicators.loc[tt, ['title', 'subtitle', 'chartFormat']]
 
 
-
-    results['frequency'] = results['function'].apply(lambda x: CHARTFREQUENCIES[x].lower())
+    results['frequency'] = results['chartFormat'].apply(lambda x: CHARTFREQUENCIES[x].lower())
 
     return results[['title', 'subtitle', 'frequency']]
 
@@ -161,3 +172,24 @@ def loadIndicators():
     return indicators
 
 
+def dropDuplicateIndices(df):
+    df.reset_index(inplace=True)
+    df.drop_duplicates(subset='index', inplace=True)
+    df.set_index('index', inplace=True)
+    return df
+
+
+
+def updateIndicators():
+    oldDir = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    ''' OPEN DATABASES, DELETE DUPLICATES'''
+    webData = dropDuplicateIndices(pd.read_pickle('./data/asReadFromBCCR.pkl'))
+    chartData = dropDuplicateIndices(pd.read_excel('./data/allChartFormats.xlsx'))
+    indicators = pd.concat([webData, chartData], axis=1)
+    indicators['chartFormat'] = pd.Categorical(indicators['chartFormat'])
+    indicators.index.names = ['chart']
+    pd.to_pickle(indicators, './data/indicators.pkl')
+    os.chdir(oldDir)
+    return indicators
