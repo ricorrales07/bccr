@@ -122,4 +122,28 @@ def downloadChart(chart, first=None, last=None, quiet=False):
         info += '\n\t' + api(chart, first, last, excel=False) + '\n'
         print(info)
 
-    return rawdata, title, subtitle
+    rawdata._metadata = {'title': title, 'subtitle': subtitle}
+    return rawdata
+
+
+def web(chart):
+    """
+        Opens the specified chart in the BCCR website, using the default Internet browser.
+
+    Parameters
+    ----------
+    series   : A number identifying the BCCR's data table (integer).
+
+    Returns
+    -------
+        None
+
+    Examples
+    --------
+        1. Open chart 125
+
+        >>> web(125)
+    """
+
+    api(chart, first=None, last=None, excel=False, open=True)
+    return
