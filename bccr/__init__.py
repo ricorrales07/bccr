@@ -2,6 +2,6 @@
 
 """
 
-from .download import api, downloadChart
+from .download import api, downloadChart, web
 from .fetch import parse, read
 from .scrape import search, findAllCharts, updateIndicators, loadIndicators

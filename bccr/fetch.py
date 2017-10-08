@@ -3,58 +3,68 @@ import pandas as pd
 
 from .download import downloadChart
 from .scrape import loadIndicators, CHARTFREQUENCIES
-from .utils import parseQuarterYear, parseMonthYear, is_leap_year, parseSeriesFreqInputs, lowestFrequency
+from .utils import parseQuarterYear, parseMonthYear, is_leap_year, parseSeriesFreqInputs, lowestFrequency, parseDay
 
 
 
 def parse(chart, chartFormat, name=None, first=None, last=None, freq=None, func=None, quiet=True):
-    rawdata, title, subtitle = downloadChart(chart, first, last, quiet)
+    #TODO: Add chartFormat='DayIndicator' to the possible options!!! Example chart=572
 
+    data = downloadChart(chart, first, last, quiet)
+    title = data._metadata['title']
 
-    '''
-    Depending on chart format, we get the following:
-        * t0 = date of first observation
-        * T  = total number of observations
-        * w  = data frequency in original rawdata
-        * data = data where each time series is a column vector
-    '''
-
-    if chartFormat == 'YearMonth':
-        t0, T, w = rawdata.index[0] + '/01', rawdata.size, 'M'
-        data = rawdata.stack(dropna=False)
-    elif chartFormat == 'MonthYear':
-        if 'total' in str(rawdata.index[0]).lower():
-            rawdata.drop(rawdata.index[0], inplace=True)
-        t0, T, w = rawdata.columns[0] + '/01', rawdata.size, 'M'
-        data = rawdata.transpose().stack(dropna=False)
-    elif chartFormat == 'IndicatorYear':
-        t0, T, w = rawdata.columns[0] + '/12', rawdata.shape[1], 'A'
-        data = rawdata.transpose()
-    elif chartFormat == 'IndicatorQuarter':
-        t0, T, w = parseQuarterYear(rawdata.columns[0]), rawdata.shape[1], 'Q'
-        data = rawdata.transpose()
-    elif chartFormat == 'QuarterIndicator':
-        t0, T, w = parseQuarterYear(rawdata.index[0]), rawdata.shape[0], 'Q'
-        data = rawdata
-    elif chartFormat == 'MonthIndicator':
-        t0, T, w = parseMonthYear(rawdata.index[0]), rawdata.shape[0], 'M'
-        data = rawdata
-    elif chartFormat == 'IndicatorMonth':
-        t0, T, w = parseMonthYear(rawdata.columns[0]), rawdata.shape[1], 'M'
-        data = rawdata.transpose()
+    ''' CLEAN DATA'''
+    if chartFormat == 'MonthYear' and 'total' in str(data.index[0]).lower():
+        data.drop(data.index[0], inplace=True)
     elif chartFormat == 'DayYear':
-        years = np.array([int(y) for y in rawdata.columns])
-        nonleap = ~ is_leap_year(years)
-        rawdata.iloc[59, nonleap] = np.inf  # row 59 = Feb 29 (counting from zero-base)
-        rawdata = rawdata.transpose().stack(dropna=False)
-        data = rawdata[rawdata != np.inf]
-        t0, T, w = '%d/01/01' % years[0], data.size, 'D'
+        nonleap = np.array([~is_leap_year(int(y)) for y in data.columns])
+        data.iloc[59, nonleap] = np.inf  # row 59 = Feb 29 (counting from zero-base)
+
+    ''' GET FIRST OBSERVATION '''
+    if chartFormat == 'YearMonth':
+        t0 = data.index[0] + '/01'
+    elif chartFormat == 'MonthYear':
+        t0 = data.columns[0] + '/01'
+    elif chartFormat == 'IndicatorYear':
+        t0 = data.columns[0] + '/12'
+    elif chartFormat == 'IndicatorQuarter':
+        t0 = parseQuarterYear(data.columns[0])
+    elif chartFormat == 'QuarterIndicator':
+        t0 = parseQuarterYear(data.index[0])
+    elif chartFormat == 'MonthIndicator':
+        t0 = parseMonthYear(data.index[0])
+    elif chartFormat == 'IndicatorMonth':
+        t0 = parseMonthYear(data.columns[0])
+    elif chartFormat == 'DayYear':
+        t0 = '%s/01/01' % data.columns[0]
+    elif chartFormat == 'DayIndicator':
+        t0 = parseDay(data.index[0])
     else:
-        return rawdata
+        raise Exception(NotImplemented)
 
-    data.index = pd.date_range(start=t0, periods=T, freq=w)
+    ''' GET DATA IN TIME v. SERIES FORMAT '''
+    if chartFormat in ['IndicatorYear', 'IndicatorQuarter', 'IndicatorMonth', 'MonthYear', 'DayYear']:
+        data = data.transpose()
 
-    # Rename time series and drop missing values
+    ''' STACK DATA '''
+    if chartFormat in ['YearMonth', 'MonthYear', 'DayYear']:
+        data = data.stack(dropna=False)
+
+    ''' REMOVE 29 FEB IN NON-LEAP YEARS '''
+    if chartFormat in ['DayYear']:
+        data = data[data != np.inf]
+
+    ''' REMOVE 29 REB IN NON-LEAP YEARS'''
+    if chartFormat in ['DayIndicator']:
+        not_a_leap_year = ~is_leap_year(np.array([int(x.split()[-1]) for x in data.index]))
+        feb29 = np.array(['29 Feb' in x for x in data.index])
+        wrong_day = feb29 & not_a_leap_year
+        data = data.iloc[~wrong_day]
+
+    ''' ADD TIME INDEX '''
+    data.index = pd.date_range(start=t0, periods=data.shape[0], freq=CHARTFREQUENCIES[chartFormat][0])
+
+    ''' RENAME TIME SERIES AND DROP MISSING VALUES '''
     if isinstance(data, pd.Series):
         data.name = name if name else title
         data.dropna(inplace=True)
@@ -64,7 +74,7 @@ def parse(chart, chartFormat, name=None, first=None, last=None, freq=None, func=
     else:
         raise ValueError('Unexpected data type: %s' % type(data))
 
-    # Resample data
+    ''' RESAMPLE DATA '''
     if freq:
         func = func if func else np.mean
         data = data.resample(freq).apply(func)

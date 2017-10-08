@@ -16,6 +16,7 @@ CHARTFREQUENCIES = {
     'QuarterIndicator': 'Quarterly',
     'MonthIndicator': 'Monthly',
     'DayYear': 'Daily',
+    'DayIndicator': 'Daily',
     'NOT-SUPPORTED-YET': 'unknown'
 }
 
@@ -181,6 +182,22 @@ def dropDuplicateIndices(df):
 
 
 def updateIndicators():
+    '''
+    Updates the indicators database
+
+    This function is necessary to update the database in the following situations:
+        1. To add new charts
+        2. To specify a read method for a previously unsupported chart.
+
+    Before running this function, one needs to update the ./data/allChartFormats.xlsx file with the chart number and its
+        associated read method. After saving the updated Excel file, run this function so that bccr.read() can read the
+        new charts.
+
+    Returns
+    -------
+        A pandas dataframe with metadata for all charts in the BCCR website
+
+    '''
     oldDir = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 

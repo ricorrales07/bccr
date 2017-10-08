@@ -57,5 +57,7 @@ print(api(125, excel=False, open=True))
 
 #print(read({8:'netas', 15:'brutas'}, quiet=False))
 
-read([125, 17])
-ipc = parse(2732,'MonthIndicator','IPC_')
+#read([125, 17])
+#ipc = parse(2732,'MonthIndicator','IPC_')
+
+downloadChart(3004)

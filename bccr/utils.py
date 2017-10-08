@@ -129,7 +129,22 @@ def lowestFrequency(freqs):
 
 
 def findColumnTitles(data: pd.DataFrame):
-    values = np.any(data.notnull().values, 1)
+    values = np.all(data.notnull().values, 1)
     return np.where(values)[0].min()
 
+def parseDay(dia: str):
+    '''
+    Convert Spanish date to English date
+    Parameters
+    ----------
+    dia String with Spanish date, format 'dd Mmm yyyy'
 
+    Returns
+    -------
+    String with English date, format 'yyyy/mm/dd'
+    '''
+    meses = {'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
+            'jul': '07', 'ago': '08', 'set': '09', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'}
+
+    d, m, y = dia.split()
+    return y + '/' + meses[m[:3].lower()] + '/' + d
