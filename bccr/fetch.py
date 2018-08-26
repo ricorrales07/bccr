@@ -5,7 +5,17 @@ from .download import downloadChart
 from .scrape import loadIndicators, CHARTFREQUENCIES
 from .utils import parseQuarterYear, parseMonthYear, is_leap_year, parseSeriesFreqInputs, lowestFrequency, parseDay
 
-
+FIRST_OBSERVATION = {
+    'YearMonth': lambda data: data.index[0] + '/01',
+    'MonthYear': lambda data: data.columns[0] + '/01',
+    'IndicatorYear': lambda data: data.columns[0] + '/12',
+    'IndicatorQuarter': lambda data: parseQuarterYear(data.columns[0]),
+    'QuarterIndicator': lambda data: parseQuarterYear(data.index[0]),
+    'MonthIndicator': lambda data: parseMonthYear(data.index[0]),
+    'IndicatorMonth': lambda data: parseMonthYear(data.columns[0]),
+    'DayYear': lambda data: '%s/01/01' % data.columns[0],
+    'DayIndicator': lambda data: parseDay(data.index[0])
+}
 
 def parse(chart, chartFormat, name=None, first=None, last=None, freq=None, func=None, quiet=True):
     #TODO: Add chartFormat='DayIndicator' to the possible options!!! Example chart=572
@@ -21,26 +31,11 @@ def parse(chart, chartFormat, name=None, first=None, last=None, freq=None, func=
         data.iloc[59, nonleap] = np.inf  # row 59 = Feb 29 (counting from zero-base)
 
     ''' GET FIRST OBSERVATION '''
-    if chartFormat == 'YearMonth':
-        t0 = data.index[0] + '/01'
-    elif chartFormat == 'MonthYear':
-        t0 = data.columns[0] + '/01'
-    elif chartFormat == 'IndicatorYear':
-        t0 = data.columns[0] + '/12'
-    elif chartFormat == 'IndicatorQuarter':
-        t0 = parseQuarterYear(data.columns[0])
-    elif chartFormat == 'QuarterIndicator':
-        t0 = parseQuarterYear(data.index[0])
-    elif chartFormat == 'MonthIndicator':
-        t0 = parseMonthYear(data.index[0])
-    elif chartFormat == 'IndicatorMonth':
-        t0 = parseMonthYear(data.columns[0])
-    elif chartFormat == 'DayYear':
-        t0 = '%s/01/01' % data.columns[0]
-    elif chartFormat == 'DayIndicator':
-        t0 = parseDay(data.index[0])
-    else:
+    try:
+        t0 = FIRST_OBSERVATION[chartFormat](data)
+    except:
         raise Exception(NotImplemented)
+
 
     ''' GET DATA IN TIME v. SERIES FORMAT '''
     if chartFormat in ['IndicatorYear', 'IndicatorQuarter', 'IndicatorMonth', 'MonthYear', 'DayYear']:
