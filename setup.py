@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(
@@ -11,7 +11,6 @@ setup(
     download_url='www.randall-romero.com/code',
     packages=['bccr', 'demos', ],
     requires=['nose', 'numpy', 'pandas(>=0.18)', 'matplotlib', 'seaborn'],
-    package_data={'bccr': ['bccr/data/*.pkl']},
+    package_data={'bccr': ['bccr/data/*']},
     include_package_data=True
 )
-
