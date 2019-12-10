@@ -57,7 +57,7 @@ def parse(chart, chartFormat, name=None, first=None, last=None, freq=None, func=
         data = data.iloc[~wrong_day]
 
     ''' ADD TIME INDEX '''
-    data.index = pd.date_range(start=t0, periods=data.shape[0], freq=CHARTFREQUENCIES[chartFormat][0])
+    data.index = pd.period_range(start=t0, periods=data.shape[0], freq=CHARTFREQUENCIES[chartFormat][0])
 
     ''' RENAME TIME SERIES AND DROP MISSING VALUES '''
     if isinstance(data, pd.Series):
