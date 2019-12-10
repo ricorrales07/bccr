@@ -74,24 +74,23 @@ def readTitle(series, quiet=True):
 
 
 def findAllCharts():
-    baseURL = 'http://www.bccr.fi.cr/indicadores_economicos_/'
+    baseURL = 'https://www.bccr.fi.cr/seccion-indicadores-economicos/'
+    pages = ['mercado-negociación',
+             'monetario-y-financiero',
+             'producción-y-empleo',
+             'sector-externo',
+             'tasas-de-interés',
+             'tipos-de-cambio',
+             'encuestas_economicas',
+             'finanzas-públicas',
+             'índices-de-precios']
 
-    pages = [
-        'Encuestas_economicas',
-        'Indices_Precios',
-        'finanzas_publicas',
-        'Mercados_negociacion',
-        'Monetario_financiero',
-        'Produccion_empleo',
-        'Sector_Externo',
-        'Tasas_interes',
-        'Tipos_cambio']
-
-    urls = {page: baseURL + page + '.html' for page in pages}
+    urls = {page: baseURL + page for page in pages}
 
 
     pagesCharts = []
     for sector, url in urls.items():
+        print('Buscando cuadros en', url)
 
         chartsList = list()
 
@@ -131,13 +130,14 @@ def findAllCharts():
 
 
 
-def search(expression, match_all=True):
+def search(expression, match_all=True, subtitle=False):
     """
         Find indicators by (partial) name match
     Parameters
     ----------
     expression  : A string to search in chart titles (case insensitive), terms separated by spaces
     match_all   : match all terms if True, match any term if False
+    subtitle    : whether to search in chart subtitle too.
 
     Returns
     -------
@@ -153,8 +153,9 @@ def search(expression, match_all=True):
         >>> search('exportaciones importaciones', False)
     """
     indicators = loadIndicators()
+    titles = indicators['title'] + (indicators['subtitle'] if subtitle else '')
 
-    tt = [indicators['title'].apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
+    tt = [titles.apply(lambda x: bool(re.search(name, x, re.IGNORECASE))) for name in expression.split()]
     tt = pd.concat(tt, axis=1)
     tt = tt.all(1) if match_all else tt.any(1)
     results = indicators.loc[tt, ['title', 'subtitle', 'chartFormat']]
