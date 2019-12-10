@@ -111,7 +111,7 @@ def parseMonthYear(txt: str):
     -------
         A string representing the last month of the quarter, in yyyy/mm format.
     """
-    month0 = MONTHS.apply(lambda x: bool(re.match(x, txt, re.IGNORECASE))).argmax()
+    month0 = MONTHS.apply(lambda x: bool(re.match(x, txt, re.IGNORECASE))).idxmax()
     year0 = re.findall("[-+]?\d+[\.]?\d*", txt)[0]
     return year0 + '/' + str(month0)
 
@@ -148,3 +148,33 @@ def parseDay(dia: str):
 
     d, m, y = dia.split()
     return y + '/' + meses[m[:3].lower()] + '/' + d
+
+
+def columns_rename(db: pd.DataFrame):
+    """
+    Dictionary to rename columns
+    Parameters
+    ----------
+    db pandas DataFrame
+
+    Returns
+    -------
+    A string, code to make a dictionary to rename the columns of given dataframe
+    """
+    print('componentes = {')
+    for x in db:
+        print("'" + x + "': '',")
+    print('}')
+
+
+def parse_date_parameter(fecha, inicio=True):
+    if type(fecha) is int:
+        return str(fecha) + ('/01/01' if inicio else '12/31')
+    elif type(fecha) is str:
+        dig = re.findall('([0-9])', fecha)
+        if len(dig)==8:
+            return '/'.join(''.join(zz) for zz in (dig[:4], dig[4:6], dig[6:]))
+        else:
+            raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" para indicar fechas')
+    else:
+        raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" o un entero(yyyy) para indicar fechas')
