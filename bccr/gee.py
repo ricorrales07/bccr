@@ -131,7 +131,7 @@ class ServicioWeb:
         elif todos:
             temp = pd.DataFrame([self.__buscar_frase__(palabra) for palabra in todos.split(' ')]).all()
         elif algunos:
-            temp = pd.DataFrame([self.__buscar_frase__(palabra) for palabra in todos.split(' ')]).any()
+            temp = pd.DataFrame([self.__buscar_frase__(palabra) for palabra in algunos.split(' ')]).any()
         else:
             print('Exactamente un parámetro de [frase, todos, algunos] debe ser proporcionado.')
             return
@@ -255,7 +255,7 @@ class ServicioWeb:
         print(treestr)
         return re.findall('\[([0-9]+)\]', treestr)
 
-    def datos(self, Indicadores, *, FechaInicio=None, FechaFinal=None, SubNiveles=False, func=np.sum, freq=None):
+    def datos(self, *Indicadores, FechaInicio=None, FechaFinal=None, SubNiveles=False, func=np.sum, freq=None):
         """
         Descargar datos del Servicio Web del BCCR:
         Construye una consulta por método GET a partir de los parámetros proporcionados, para cada uno de los
@@ -273,12 +273,13 @@ class ServicioWeb:
         -------
         Datos en formato pandas.DataFrame
         """
+        # desempacar Indicadores si viene en una colección
+        if len(Indicadores)==1 and hasattr(Indicadores[0], '__iter__') and type(Indicadores) is not str:
+            Indicadores = Indicadores[0]
 
-        tipo = type(Indicadores)
-        if tipo in [str, int]:
-            Indicadores = [str(Indicadores)]
-        else:
-            Indicadores = [str(x) for x in Indicadores]
+        # Convertir numeros de cuadros a textos
+        Indicadores = [str(x) for x in Indicadores]
+
         datos = {codigo: self.__descargar__(codigo, FechaInicio, FechaFinal, SubNiveles) for codigo in Indicadores}
 
         freqs = pd.Series({codigo: self.indicadores.loc[codigo, 'freq'] for codigo in Indicadores})
