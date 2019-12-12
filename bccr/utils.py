@@ -169,7 +169,7 @@ def columns_rename(db: pd.DataFrame):
 
 def parse_date_parameter(fecha, inicio=True):
     if type(fecha) is int:
-        return str(fecha) + ('/01/01' if inicio else '12/31')
+        return str(fecha) + ('/01/01' if inicio else '/12/31')
     elif type(fecha) is str:
         dig = re.findall('([0-9])', fecha)
         if len(dig)==8:
