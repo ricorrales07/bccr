@@ -1,16 +1,40 @@
-from setuptools import setup
+""" The bccr package setup.
+Based on setuptools
 
+Randall Romero-Aguilar, 2015-2019
+"""
+
+from setuptools import setup
+from codecs import open
+from os import path
+
+here = path.abspath(path.dirname(__file__))
+
+with open(path.join(here,'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='bccr',
-    version='0.1',
-    description='Tools for downloading data from the Central Bank of Costa Rica',
+    version='2019.12post1',
+    description='Herramientas para descargar datos del Banco Central de Costa Rica',
+    long_description_content_type='text/markdown',
+	long_description=long_description,
     author='Randall Romero-Aguilar',
     author_email='randall.romero@outlook.com',
-    url='randall-romero.com/code',
-    download_url='www.randall-romero.com/code',
+    url='http://randall-romero.com/code/bccr',
+    classifiers=['Development Status :: 4 - Beta',
+                 'Intended Audience :: Economists',
+                 'Topic :: Data processing',
+                 'License :: OSI Approved :: MIT License',
+                 'Programming Language :: Python :: 3.7'],
+    keywords='BCCR datos',
+    download_url='http://randall-romero.com/code',
     packages=['bccr', 'demos', ],
-    requires=['nose', 'numpy', 'pandas(>=0.18)', 'matplotlib', 'seaborn'],
-    package_data={'bccr': ['bccr/data/*']},
+    python_requires='>=3.7',
+    install_requires=['pandas', 'numpy', 'anytree',  'requests', 'beautifulsoup4'],
+    package_data={'bccr': ['data/indicadores.pkl', 'data/indicators.pkl', 'data/cuadros.pkl']},
     include_package_data=True
 )
+
+
+

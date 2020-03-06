@@ -16,11 +16,16 @@ DATA_FOLDER  = os.path.dirname(os.path.abspath(__file__))+ '\\data\\'
 PICKLE_FILE = DATA_FOLDER + 'indicadores.pkl'
 EXCEL_FILE =  DATA_FOLDER + 'Indicadores.xlsx'
 
+
+#TODO: Arreglar problema de fechas duplicadas! ejemplo monex 3223 en 2010
+#TODO: Arreglar missing values mal codificados! ejemplo monex 3223 aparecen 0s en vez de missing values
+
+
 @dataclass
 class ServicioWeb:
-    nombre: str
-    correo: str
-    token: str
+    nombre: str = 'Paquete BCCR Python'
+    correo: str = 'paquete.bccr.python@outlook.com'
+    token: str = '5CMRCBTHMT'
     indicadores: pd.DataFrame = pd.read_pickle(PICKLE_FILE)
 
     def __usuario__(self):
@@ -30,7 +35,7 @@ class ServicioWeb:
 
         Returns
         -------
-        Una tupla: (nombre, correo electrónico, token)
+        Un diccionario: (nombre, correo electrónico, token)
         """
 
         return dict(Nombre=self.nombre, CorreoElectronico=self.correo, Token=self.token)
@@ -58,7 +63,7 @@ class ServicioWeb:
         VALOR = float(obs.find('NUM_VALOR').text) if obs.find('NUM_VALOR') else nan
         return CODIGO, FECHA, VALOR
 
-    def __descargar__(self, Indicador, FechaInicio=None, FechaFinal=None, SubNiveles=False):
+    def __descargar__(self, Indicador, FechaInicio=None, FechaFinal=None, SubNiveles=False, indexar=True):
         """
         Descargar datos del Servicio Web del BCCR:
         Construye una consulta por método GET a partir de los parámetros proporcionados. Descarga los datos
@@ -81,7 +86,7 @@ class ServicioWeb:
         params = self.__usuario__()
         params['Indicador'] = Indicador
         params['FechaInicio'] = parse_date_parameter(FechaInicio) if FechaInicio else '01/01/1900'
-        params['FechaFinal'] = parse_date_parameter(FechaFinal) if FechaFinal else datetime.now().strftime('%d/%m/%Y')
+        params['FechaFinal'] = parse_date_parameter(FechaFinal,inicio=False) if FechaFinal else datetime.now().strftime('%d/%m/%Y')
         params['SubNiveles'] = 'S' if SubNiveles else 'N'
 
         host = 'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos'
@@ -94,12 +99,15 @@ class ServicioWeb:
             if observaciones:
                 datos = [self.__observacion__(y) for y in observaciones]
                 datos = pd.DataFrame(datos, columns=['variable', 'fecha','valor'])
-                datos = datos.set_index(['variable', 'fecha']).unstack(level=0)['valor']
-                t0 = datos.index[0]
-                freq = self.indicadores.loc[Indicador,'freq']
-                T = datos.shape[0]
-                datos.index = pd.period_range(start=t0,freq=freq, periods=T)
-                return datos.dropna(how='all')
+                if indexar:
+                    datos = datos.set_index(['variable', 'fecha']).unstack(level=0)['valor']
+                    t0 = datos.index[0]
+                    freq = self.indicadores.loc[Indicador,'freq']
+                    T = datos.shape[0]
+                    datos.index = pd.period_range(start=t0,freq=freq, periods=T)
+                    return datos.dropna(how='all')
+                else:
+                    return datos
 
             print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
         else:

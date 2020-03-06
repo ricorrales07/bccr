@@ -4,11 +4,6 @@ import numpy as np
 import os
 import time
 import webbrowser
-import requests
-from datetime import datetime
-from bs4 import BeautifulSoup
-from numpy import nan
-import re
 
 from .utils import parse_date_parameter
 from .scrape import CHARTFREQUENCIES
@@ -65,7 +60,8 @@ class PaginaWeb:
             >>> self.api(125, excel=False, abrir=True)  # opens link in browser
             http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125
         """
-        bccr_web = "http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/"
+        bccr_web = "https://gee.bccr.fi.cr/indicadoreseconomicos/"
+
         bccr_web += "Cuadros/frmVerCatCuadro.aspx?"
         params = dict(CodCuadro=Cuadro)
         if FechaInicio:
