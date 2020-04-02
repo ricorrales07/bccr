@@ -10,8 +10,9 @@ from .scrape import CHARTFREQUENCIES
 from .utils import findColumnTitles, fixCommas, is_leap_year
 from .fetch import FIRST_OBSERVATION
 
-DATA_FOLDER  = os.path.dirname(os.path.abspath(__file__))+ '\\data\\'
-PICKLE_FILE = DATA_FOLDER + 'cuadros.pkl'
+BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
+DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
+PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl')
 
 @dataclass
 class PaginaWeb:

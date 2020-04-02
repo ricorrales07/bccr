@@ -11,10 +11,10 @@ from numpy import nan
 import re
 from .utils import parse_date_parameter
 
-
-DATA_FOLDER  = os.path.dirname(os.path.abspath(__file__))+ '\\data\\'
-PICKLE_FILE = DATA_FOLDER + 'indicadores.pkl'
-EXCEL_FILE =  DATA_FOLDER + 'Indicadores.xlsx'
+BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
+DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
+PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl')
+EXCEL_FILE =  os.path.join(DATA_FOLDER, 'Indicadores.xlsx')
 
 
 #TODO: Arreglar problema de fechas duplicadas! ejemplo monex 3223 en 2010
