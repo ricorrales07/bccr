@@ -13,8 +13,28 @@ from .utils import parse_date_parameter
 
 BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
-PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl')
+PICKLE_FILE = os.path.join(DATA_FOLDER, 'indicadores.pkl')
 EXCEL_FILE =  os.path.join(DATA_FOLDER, 'Indicadores.xlsx')
+
+FRASE_AYUDA = """
+CLASE ServicioWeb
+
+Esta clase permite buscar y descargar datos de indicadores del servicio web del Banco Central de Costa Rica.
+Suponiendo que el objeto de clase ServicioWeb se llama "consulta":
+    * para buscar indicadores, utilice 
+        consulta.buscar()
+    * para saber más detalles del indicador 8 (por ejemplo)
+        consulta.quien(8)
+    * para buscar las subcuentas de un indicador, digamos el 784
+        consulta.subcuentas(784)      
+    * para descargar datos de indicadors 4, 7 y 231 (por ejemplo), hay varias formas de hacerlo 
+        consulta(4, 7, 231)   # pasando los códigos directamente
+        consulta([4, 7, 231]) # pasando los códigos en una lista
+        consulta({'4':'indicA', '7':'indicB', '231':'indicC'} # pasando los códigos en un diccionario, en 
+            cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.        
+"""
+
+
 
 
 #TODO: Arreglar problema de fechas duplicadas! ejemplo monex 3223 en 2010
@@ -141,7 +161,17 @@ class ServicioWeb:
         elif algunos:
             temp = pd.DataFrame([self.__buscar_frase__(palabra) for palabra in algunos.split(' ')]).any()
         else:
-            print('Exactamente un parámetro de [frase, todos, algunos] debe ser proporcionado.')
+            ayuda = """ BUSCAR
+            Esta función ayuda a buscar los códigos de indicadores, utilizando palabras descriptivas.
+            Exactamente un parámetro de [frase, todos, algunos] debe ser proporcionado.
+            
+            Ejemplos de uso:
+                buscar(frase="descripción contiene esta frase literalmente")
+                buscar(todos="descripción contiene todos estos términos en cualquir orden")
+                buscar(algunos="descripción contiene alguno de estos términos")
+                buscar()  # muestra este mensaje de ayuda
+            """
+            print(ayuda)
             return
 
         if frecuencia:
@@ -285,6 +315,13 @@ class ServicioWeb:
         if len(Indicadores)==1 and hasattr(Indicadores[0], '__iter__') and type(Indicadores) is not str:
             Indicadores = Indicadores[0]
 
+        # determinar si insumo es diccionario
+        if isinstance(Indicadores, dict):
+            renombrar  = True
+            variables = Indicadores.copy()
+        else:
+            renombrar = False
+
         # Convertir numeros de cuadros a textos
         Indicadores = [str(x) for x in Indicadores]
 
@@ -302,7 +339,14 @@ class ServicioWeb:
                 if freqs[codigo] != freq:
                     datos[codigo] = datos[codigo].resample(freq).apply(func[codigo])
 
-        return pd.concat(datos.values(), axis=1)
+        salida = pd.concat(datos.values(), axis=1)
+        return salida.rename(columns=variables) if renombrar else salida
 
     def __call__(self, *args, **kwargs):
         return self.datos(*args, **kwargs)
+
+    def __str__(self):
+        return FRASE_AYUDA
+
+    def __repr__(self):
+        return self.__str__()

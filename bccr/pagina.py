@@ -14,6 +14,19 @@ BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
 PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl')
 
+FRASE_AYUDA = """
+CLASE PaginaWeb
+
+Esta clase permite buscar y descargar cuadros de indicadores del sitio web del Banco Central de Costa Rica.
+Suponiendo que el objeto de clase PaginaWeb se llama "consulta":
+    * para buscar cuadros, utilice 
+        consulta.buscar()
+    * para descargar datos de cuadros 4, 7 y 231 (por ejemplo), hay varias formas de hacerlo 
+        consulta(4, 7, 231)   # pasando los códigos directamente
+        consulta([4, 7, 231]) # pasando los códigos en una lista
+        consulta({'4':'indicA', '7':'indicB', '231':'indicC'} # pasando los códigos en un diccionario        
+"""
+
 @dataclass
 class PaginaWeb:
     cuadros: pd.DataFrame = pd.read_pickle(PICKLE_FILE)
@@ -289,11 +302,28 @@ class PaginaWeb:
         elif algunos:
             temp = pd.DataFrame([self.__buscar_frase__(palabra) for palabra in algunos.split(' ')]).any()
         else:
-            print('Exactamente un parámetro de [frase, todos, algunos] debe ser proporcionado.')
+            ayuda = """ BUSCAR
+            Esta función ayuda a buscar los códigos de indicadores, utilizando palabras descriptivas.
+            Exactamente un parámetro de [frase, todos, algunos] debe ser proporcionado.
+
+            Ejemplos de uso:
+                buscar(frase="descripción contiene esta frase literalmente")
+                buscar(todos="descripción contiene todos estos términos en cualquir orden")
+                buscar(algunos="descripción contiene alguno de estos términos")
+                buscar()  # muestra este mensaje de ayuda
+            """
+            print(ayuda)
             return
+
 
         if frecuencia:
             freq = self.cuadros['freq'] == frecuencia[0].upper()
             return self.cuadros[temp & freq][CAMPOS]
         else:
             return self.cuadros[temp][CAMPOS]
+
+    def __str__(self):
+        return FRASE_AYUDA
+
+    def __repr__(self):
+        return self.__str__()
