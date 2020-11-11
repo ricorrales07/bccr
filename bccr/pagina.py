@@ -251,6 +251,13 @@ class PaginaWeb:
         if len(Cuadros)==1 and hasattr(Cuadros[0], '__iter__') and type(Cuadros) is not str:
             Cuadros = Cuadros[0]
 
+        # determinar si insumo es diccionario
+        if isinstance(Cuadros, dict):
+            renombrar = True
+            variables = {str(k): v for k, v in Cuadros.items()}  # convertir llaves a str, para renombrar
+        else:
+            renombrar = False
+
         # Convertir numeros de cuadros a enteros
         Cuadros = [int(x) for x in Cuadros]
 
@@ -269,7 +276,11 @@ class PaginaWeb:
                 if freqs[codigo] != freq:
                     datos[codigo] = datos[codigo].resample(freq).apply(func[codigo])
 
-        return pd.concat(datos.values(), axis=1)
+        results = pd.concat(datos.values(), axis=1)
+        if renombrar:
+            results.rename(columns=variables, inplace=True)
+
+        return results
 
 
     def __call__(self, *args, **kwargs):

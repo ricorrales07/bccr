@@ -30,7 +30,7 @@ Suponiendo que el objeto de clase ServicioWeb se llama "consulta":
     * para descargar datos de indicadors 4, 7 y 231 (por ejemplo), hay varias formas de hacerlo 
         consulta(4, 7, 231)   # pasando los códigos directamente
         consulta([4, 7, 231]) # pasando los códigos en una lista
-        consulta({'4':'indicA', '7':'indicB', '231':'indicC'} # pasando los códigos en un diccionario, en 
+        consulta({4:'indicA', 7:'indicB', 231:'indicC'} # pasando los códigos en un diccionario, en 
             cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.        
 """
 
@@ -347,7 +347,10 @@ class ServicioWeb:
                     datos[codigo] = datos[codigo].resample(freq).apply(func[codigo])
 
         salida = pd.concat(datos.values(), axis=1)
-        return salida.rename(columns=variables) if renombrar else salida
+        if renombrar:
+            salida.rename(columns=variables, inplace=True)
+
+        return salida
 
     def __call__(self, *args, **kwargs):
         return self.datos(*args, **kwargs)
