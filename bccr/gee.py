@@ -138,7 +138,7 @@ class ServicioWeb:
         CAMPOS = ['DESCRIPCION', 'descripcion']
         return pd.DataFrame([self.indicadores[campo].str.contains(frase, case=False) for campo in CAMPOS]).any()
 
-    def buscar(self, *, frase=None, todos=None, algunos=None, frecuencia=None):
+    def buscar(self, *, frase=None, todos=None, algunos=None, frecuencia=None, Unidad=None, Medida=None, periodo=None):
         """
         Buscar palabras en la descripción de las variables en el catálogo.
         Parameters
@@ -173,12 +173,19 @@ class ServicioWeb:
             """
             print(ayuda)
             return
+        results = self.indicadores[temp].copy()
 
         if frecuencia:
-            freq = self.indicadores['freq'] == frecuencia[0].upper()
-            return self.indicadores[temp & freq][CAMPOS]
-        else:
-            return self.indicadores[temp][CAMPOS]
+            freq = frecuencia[0].upper()
+            results.query('freq == @freq', inplace=True)
+        if Unidad:
+            results.query('Unidad == @Unidad', inplace=True)
+        if Medida:
+            results.query('Medida == @Medida', inplace=True)
+        if periodo:
+            results.query('periodo = @periodo', inplace=True)
+
+        return results[CAMPOS]
 
 
     def actualizar_catalogo(self):
@@ -318,7 +325,7 @@ class ServicioWeb:
         # determinar si insumo es diccionario
         if isinstance(Indicadores, dict):
             renombrar  = True
-            variables = Indicadores.copy()
+            variables = {str(k): v for k, v in Indicadores.items()} # convertir llaves a str, para renombrar
         else:
             renombrar = False
 
@@ -350,3 +357,5 @@ class ServicioWeb:
 
     def __repr__(self):
         return self.__str__()
+
+servicio_web = ServicioWeb()
