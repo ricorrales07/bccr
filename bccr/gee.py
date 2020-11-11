@@ -358,4 +358,4 @@ class ServicioWeb:
     def __repr__(self):
         return self.__str__()
 
-servicio_web = ServicioWeb()
+SW = ServicioWeb()
