@@ -1,3 +1,11 @@
+"""
+gee: un módulo para definir la clase ServicioWeb
+
+Este módulo defile la clase ServicioWeb y crea una instancia de la misma, SW. Esta clase permite descargar datos
+del servicio web del Banco Central de Costa Rica.
+"""
+
+
 
 import pandas as pd
 import numpy as np
@@ -43,65 +51,95 @@ Suponiendo que el objeto de clase ServicioWeb se llama "consulta":
 
 @dataclass
 class ServicioWeb:
+    """
+    Una clase para descargar datos del servicio web del Banco Central de Costa Rica
+
+    Attributes
+    ----------
+    nombre : str, optional
+        El nombre del usuario registrado en el servicio web del BCCR
+    correo : str, optional
+        El correo electrónico registrado por el usuario en el servicio web.
+    token : str, optional
+        El token recibido por el usuario de parte del BCCR para tener acceso al servicio web.
+    indicadores : pd.DataFrame, optional
+        una table con la descripción de los indicadores disponibles en el servicio web.
+
+    Examples
+    --------
+    >>> from bccr import ServicioWeb
+    >>> consulta = ServicioWeb('Ratón Pérez', 'raton.perez@correo.com', '4SDLJUHKEZ')  # si Ratón Pérez se registró en el servicio web
+
+    >>> consulta = ServicioWeb()  # usando las credenciales propias de este paquete de Python.
+    """
     nombre: str = 'Paquete BCCR Python'
     correo: str = 'paquete.bccr.python@outlook.com'
     token: str = '5CMRCBTHMT'
     indicadores: pd.DataFrame = pd.read_pickle(PICKLE_FILE)
 
     def __usuario__(self):
-        """
-        Credenciales de usuario.
-        Para uso interno de la clase, en la función descargar
+        """Credenciales de usuario
+
+        Para uso interno de la clase, en la función __descargar__.
 
         Returns
         -------
-        Un diccionario: (nombre, correo electrónico, token)
+        dict
+            el nombre, correo, y token en un diccionario con keywords Nombre, CorreoElectronico, y Token
         """
-
         return dict(Nombre=self.nombre, CorreoElectronico=self.correo, Token=self.token)
 
     def __observacion__(self, obs):
-        """
-        Observación: extrae código de variable, fecha y valor de una observación.
-        Para uso interno de la clase, en la función descargar.
+        """Extraer código de variable, fecha y valor de una observación
+
+        Toma un elemento XML leído por BeautifulSoup y extrae los campos necesarios para identificar una observación.
+        Para uso interno de la clase, en la función __descargar__.
 
         Parameters
         ----------
-        obs: Una observación del archivo XML descargado de BCCR, resultado de BeautifulSoup
+        obs: nodo de BeautifulSoup
+            Representa una observación extraída de un archivo XML descargado del BCCR.
 
         Returns
         -------
-        Una tupla con:
-            --codigo: el código del indicador (str)
-            --fecha: la fecha de la observación (str)
-            --valor: el valor de la observación (float)
-
+        codigo : str
+            el código del indicador
+        fecha : str
+            la fecha de la observación
+        valor : float
+            el valor de la observación
         """
-
         CODIGO = obs.find('COD_INDICADORINTERNO').text
         FECHA = obs.find('DES_FECHA').text[:10]
         VALOR = float(obs.find('NUM_VALOR').text) if obs.find('NUM_VALOR') else nan
         return CODIGO, FECHA, VALOR
 
     def __descargar__(self, Indicador, FechaInicio=None, FechaFinal=None, SubNiveles=False, indexar=True):
-        """
-        Descargar datos del Servicio Web del BCCR:
+        """Descargar datos del Servicio Web del BCCR
+
         Construye una consulta por método GET a partir de los parámetros proporcionados. Descarga los datos
         y los transforma en una tabla de datos de Pandas.
         Para uso interno de la clase, para la función datos.
 
         Parameters
         ----------
-        Indicador:  indicador a consultar (str o int)
-        FechaInicio: fecha de primera observación, formato dd/mm/yyyy. (str, opcional, '01/01/1900')
-        FechaFinal: fecha de primera observación, formato dd/mm/yyyy. (str, opcional, fecha de hoy)
-        SubNiveles: si descargar subniveles del Indicador (bool, opcional, False)
+        Indicador : str or int
+            número del indicador a descargar.
+        FechaInicio : str, optional
+            fecha de la primera observación a descargar, formato dd/mm/yyyy (valor predeterminado es '01/01/1900')
+        FechaFinal : str, optional
+            fecha de la última observación a descargar, formato dd/mm/yyyy (valor predeterminado es fecha del sistema)
+        SubNiveles : bool, optional
+            True si desea descargar las subcuentas del indicador (si existen), False si se desea únicamente el indicador.
+            (valor predeterminado: False)
+        indexar : bool, optional
+            True si desea indexar los datos como serie de tiempo. (valor predeterminado: True)
 
         Returns
         -------
-        Datos en formato pandas.DataFrame
+        pd.DataFrame
+            Los datos solicitados
         """
-
         Indicador = str(Indicador)
         params = self.__usuario__()
         params['Indicador'] = Indicador
@@ -135,22 +173,59 @@ class ServicioWeb:
 
 
     def __buscar_frase__(self, frase):
+        """Busca indicadores cuya descripción contenga la frase indicada
+
+        Parameters
+        ----------
+        frase : str
+            texto que debe estar presente en la descripción del indicador
+
+        Returns
+        -------
+        pd.DataFrame
+            listado de indicadores que satisfacen la condición
+        """
         CAMPOS = ['DESCRIPCION', 'descripcion']
         return pd.DataFrame([self.indicadores[campo].str.contains(frase, case=False) for campo in CAMPOS]).any()
 
     def buscar(self, *, frase=None, todos=None, algunos=None, frecuencia=None, Unidad=None, Medida=None, periodo=None):
-        """
-        Buscar palabras en la descripción de las variables en el catálogo.
+
+        """buscar códigos de indicadores según su descripción
+
         Parameters
         ----------
-        frase
-        todos
-        algunos
-        frecuencia
+        frase, todos, algunos : str
+            texto que debe aparecer en la descripción del indicador. Sólo una de estos tres parámetros debe utilizarse
+            a la vez. 'frase' busca una coincidencia exacta, 'todos' que todas las palabras aparezcan (en cualquier
+            orden), 'algunos' que al menos una de las palabras aparezca. La búsqueda no es sensible a mayúscula/minúscula.
+        frecuencia : str, optional
+            mostrar solo indicadores que tengan la frecuencia indicada.
+        Unidad : str, optional
+            mostrar solo indicadores que tengan la unidad indicada
+        Medida : str, optional
+            mostrar solo indicadores que tengan la medida indicada
+        periodo: str, optional
+            mostrar solo indicadores que tengan la periodicidad indicada
 
         Returns
         -------
 
+        Examples
+        --------
+        >>> buscar(frase="descripción contiene esta frase literalmente")
+
+        >>> buscar(todos="descripción contiene todos estos términos en cualquir orden")
+
+        >>> buscar(algunos="descripción contiene alguno de estos términos")
+
+        >>> buscar()  # muestra un mensaje de ayuda
+
+        >>> buscar(todos='precios transables', Medida='Variación interanual')
+
+        Notes
+        -----
+        El parámetro 'frecuencia' será discontinuado en algún momento. Se recomienda usar el parámetro 'periodo' para
+        cumplir la misma funcionalidad.
         """
         CAMPOS = ['DESCRIPCION', 'descripcion', 'Unidad','Medida','periodo']
 
@@ -183,12 +258,25 @@ class ServicioWeb:
         if Medida:
             results.query('Medida == @Medida', inplace=True)
         if periodo:
-            results.query('periodo = @periodo', inplace=True)
+            results.query('periodo == @periodo', inplace=True)
 
         return results[CAMPOS]
 
 
     def actualizar_catalogo(self):
+        """Actualiza el catálago de indicadores
+
+        Returns
+        -------
+        pd.DataFrame
+            el catálogo actualizado
+
+        Notes
+        -----
+        Esta función es  para uso interno del paquete. Asume la existencia de un archivo de Excel con el catálogo, e
+        intenta añadirlo al paquete para futura referencia.
+
+        """
         FREQ = {'Anual': 'A',
                 'Mensual': 'M',
                 'Trimestral': 'Q',
@@ -224,8 +312,6 @@ class ServicioWeb:
         indicadores['familia'] = indicadores['cuenta'].str[28:]
 
 
-
-
         FAMILIAS = indicadores['familia'].value_counts()
         todo = pd.concat([self.__hacer_arbol__(ff, indicadores) for ff in FAMILIAS.index], keys=FAMILIAS.index)
         todo.index = todo.index.get_level_values(1) + '.' + todo.index.get_level_values(0)
@@ -242,6 +328,20 @@ class ServicioWeb:
             print('La tabla indicadores fue actualizada en el objeto, pero no en el paquete bccr.')
 
     def __hacer_arbol__(self, familia, indicadores):
+        """Representa un indicador como parte de un subconjunto de indicadores
+
+        Parameters
+        ----------
+        familia : str
+            código de un indicador en el esquema de cuentas
+        indicadores : pd.DataFrame
+            tabla con el catálogo de indicadores
+
+        Returns
+        -------
+        pd.DataFrame
+            listado de las cuentas
+        """
         grupos = pd.DataFrame(
             dict(nombre=['BCCR', 'Índices de Precios', 'Tipos de cambio', 'Tasas de interés', 'Sector Real',
                          'Sector Externo', 'Sector Fiscal', 'Sector Monetario y Financiero',
@@ -273,11 +373,43 @@ class ServicioWeb:
 
 
     def __print_node__(self,node):
+        """Imprime un árbol que representa la posición de un nodo en el esquema de cuentas.
+
+        Para uso interno de la clase.
+
+        Parameters
+        ----------
+        node: Node (anytree)
+            indicador que se quiere representar, como un nodo del catálogo de indicadores
+        Returns
+        -------
+        None :
+            El resultado se imprime a pantalla
+        """
         lista = str(node)[12:-1].split('/')
         for i, n in enumerate(lista):
             print('|' + '-' * (3 * (i + 1)) + ' ' + n)
 
     def quien(self, codigo):
+        """Imprime información acerca de un indicador
+
+        Parameters
+        ----------
+        codigo : str or int
+            código numérico del indicador que se desea describir.
+
+        Returns
+        -------
+        None :
+            El resultado se imprime a pantalla
+
+        Examples
+        --------
+        >>> consulta = ServicioWeb()
+        >>> consulta.quien(33438)
+
+        >>> consulta.quien(33472)
+        """
         if str(codigo) not in self.indicadores.index:
             print(f'La variable {codigo} no aparece en la lista de indicadores.')
             print('Puede ser que esta variable sí exista en la base de datos del BCCR.')
@@ -295,28 +427,92 @@ class ServicioWeb:
         print('\n')
 
     def subcuentas(self, codigo):
+        """Subcuentas de un indicador
+
+        Algunos indicadores pueden desagregarse (por ejemplo, el IMAE total se puede desagregar por actividad económica).
+        Esta función ayuda a encontrar los códigos de esas subcuentas.
+
+        Parameters
+        ----------
+        codigo : str or int
+            código numérico del indicador del que se desea conocer sus subcuentas.
+
+        Returns
+        -------
+        list:
+            Los códigos de las subcuentas.
+            Además, el resultado se imprime a pantalla como un árbol de cuentas.
+
+        Examples
+        --------
+        >>> consulta = ServicioWeb
+        >>> consulta.subcuentas(33439)
+        """
         cta = self.indicadores.loc[str(codigo), 'node']
         treestr = RenderTree(cta).by_attr()
         print(treestr)
         return re.findall('\[([0-9]+)\]', treestr)
 
     def datos(self, *Indicadores, FechaInicio=None, FechaFinal=None, SubNiveles=False, func=np.sum, freq=None):
-        """
-        Descargar datos del Servicio Web del BCCR:
-        Construye una consulta por método GET a partir de los parámetros proporcionados, para cada uno de los
-        Indicadores solicitados. Descarga los datos, los transforma en una tabla de datos de Pandas.
-        Si hay indicadores de distintas frecuecias, los transforma a la misma frecuencia según el método indicado.
+        """Descargar datos del Servicio Web del BCCR
 
         Parameters
         ----------
-        Indicadores:  lista de indicadores a consultar (str o int o iterable)
-        FechaInicio: fecha de primera observación, formato dd/mm/yyyy. (str, opcional, '01/01/1900')
-        FechaFinal: fecha de primera observación, formato dd/mm/yyyy. (str, opcional, fecha de hoy)
-        SubNiveles: si descargar subniveles del Indicador (bool, opcional, False)
+        Indicadores : iterable (ver notas y ejemplos)
+            Los códigos numéricos (como int o str) de los indicadores que se desean descargar.
+        FechaInicio : str or int, optional
+            fecha de la primera observación a descargar, formato dd/mm/yyyy (valor predeterminado es '01/01/1900'). Si es
+            un int, se interpreta como el primero de enero del año indicado por ese int.
+        FechaFinal : str or int, optional
+            fecha de la última observación a descargar, formato dd/mm/yyyy (valor predeterminado es fecha del sistema).
+            Si es un int, se interpreta como el 31 de diciembre del año indicado por ese int.
+        SubNiveles : bool, optional
+            True si desea descargar las subcuentas del indicador (si existen), False si se desea únicamente el indicador.
+            (valor predeterminado: False)
+        func : function, optional
+            función que se desea utilizar para transformar la frecuencia de los datos (predeterminado: suma)
+        freq : str, optional
+            frecuencia a la que se quiere convertir los datos
 
         Returns
         -------
-        Datos en formato pandas.DataFrame
+        pd.DataFrame
+            una tabla con los datos solicitados, filas indexadas por tiempo, cada columna es un indicador.
+
+        Notes
+        -----
+        1. Esta función construye una consulta por método GET a partir de los parámetros proporcionados, para cada uno de
+        los Indicadores solicitados. Descarga los datos, los transforma en una tabla de datos de Pandas.
+
+        2. Si hay indicadores de distintas frecuecias, los transforma a la misma frecuencia según el método indicado.
+
+        3. A excepción de Indicadores, todos los parámetros deben usar palabra clave. Indicadores contiene todos los
+        parámetros posicionales que reciba la función.
+
+        4. Hay varias maneras de indicar los Indicadores: (a) simplemente enumerándolos, (b) en una lista o tupla, y
+        (c) en un diccionario (método recomendado). En caso de tratarse de diccionario, los códigos se indican como las
+        llaves del diccionario, mientras que los valores del diccionario se usan para renombrar las columnas resultantes.
+
+        5. Las instancias de la clase ServicioWeb son ejecutables: si se llaman como una función, simplemente ejecutan la
+        función datos()
+
+        Examples
+        --------
+        >>> from bccr import SW
+        >>> SW.datos(33448) # o más fácil: SW(33448)
+
+        >>> SW(33439, 33448, 33451, 33457)
+
+        >>> SW([33439, 33448, 33451, 33457])
+
+        >>> SW('33439', '33448', '33451', '33457')
+
+        >>> cuentas = {33439:'PIB', 33448:'Consumo', 33451:'Gasto', 33457:'Inversión'}
+        >>> SW(cuentas)
+
+        >>> SW(cuentas, FechaInicio='2000/01/01')
+
+        >>> SW(cuentas, FechaInicio=2000, FechaFinal=2015)
         """
         # desempacar Indicadores si viene en una colección
         if len(Indicadores)==1 and hasattr(Indicadores[0], '__iter__') and type(Indicadores) is not str:
@@ -360,5 +556,6 @@ class ServicioWeb:
 
     def __repr__(self):
         return self.__str__()
+
 
 SW = ServicioWeb()
