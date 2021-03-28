@@ -169,11 +169,11 @@ def columns_rename(db: pd.DataFrame):
 
 def parse_date_parameter(fecha, inicio=True):
     if type(fecha) is int:
-        return str(fecha) + ('/01/01' if inicio else '/12/31')
+        return f'01/01/{fecha}' if inicio else '31/12/{fecha}'
     elif type(fecha) is str:
         dig = re.findall('([0-9])', fecha)
         if len(dig)==8:
-            return '/'.join(''.join(zz) for zz in (dig[:4], dig[4:6], dig[6:]))
+            return '/'.join(''.join(zz) for zz in (dig[6:], dig[4:6], dig[:4]))
         else:
             raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" para indicar fechas')
     else:
