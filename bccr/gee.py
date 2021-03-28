@@ -19,6 +19,8 @@ from numpy import nan
 import re
 from .utils import parse_date_parameter
 
+import warnings
+
 BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
 PICKLE_FILE = os.path.join(DATA_FOLDER, 'indicadores.pkl')
@@ -114,7 +116,7 @@ class ServicioWeb:
         VALOR = float(obs.find('NUM_VALOR').text) if obs.find('NUM_VALOR') else nan
         return CODIGO, FECHA, VALOR
 
-    def __descargar__(self, Indicador, FechaInicio=None, FechaFinal=None, SubNiveles=False, indexar=True):
+    def __descargar__(self, Indicador, FechaInicio=None, FechaFinal=None):
         """Descargar datos del Servicio Web del BCCR
 
         Construye una consulta por método GET a partir de los parámetros proporcionados. Descarga los datos
@@ -125,52 +127,41 @@ class ServicioWeb:
         ----------
         Indicador : str or int
             número del indicador a descargar.
-        FechaInicio : str, optional
-            fecha de la primera observación a descargar, formato dd/mm/yyyy (valor predeterminado es '01/01/1900')
+        FechaInicio : int or str, optional
+            fecha de la primera observación a descargar,
+            int -> año, o str -> yyyy/mm/dd (valor predeterminado es '1990/01/01')
         FechaFinal : str, optional
             fecha de la última observación a descargar, formato dd/mm/yyyy (valor predeterminado es fecha del sistema)
-        SubNiveles : bool, optional
-            True si desea descargar las subcuentas del indicador (si existen), False si se desea únicamente el indicador.
-            (valor predeterminado: False)
-        indexar : bool, optional
-            True si desea indexar los datos como serie de tiempo. (valor predeterminado: True)
 
         Returns
         -------
-        pd.DataFrame
-            Los datos solicitados
+        pd.Series
+            Los datos solicitados, indexados por la fecha reportada por el BCCR
         """
-        Indicador = str(Indicador)
         params = self.__usuario__()
         params['Indicador'] = Indicador
         params['FechaInicio'] = parse_date_parameter(FechaInicio) if FechaInicio else '01/01/1900'
-        params['FechaFinal'] = parse_date_parameter(FechaFinal,inicio=False) if FechaFinal else datetime.now().strftime('%d/%m/%Y')
-        params['SubNiveles'] = 'S' if SubNiveles else 'N'
+        params['FechaFinal'] = parse_date_parameter(FechaFinal, False) if FechaFinal else datetime.now().strftime(
+            '%d/%m/%Y')
+        params['SubNiveles'] = 'N'
 
         host = 'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos'
         resp = requests.get(host, params)
 
-        if resp.status_code == 200: # datos recibidos exitosamente
+        if resp.status_code == 200:  # datos recibidos exitosamente
             rawdata = resp.text
             soup = BeautifulSoup(rawdata, 'xml')
             observaciones = soup.find_all('INGC011_CAT_INDICADORECONOMIC')
             if observaciones:
                 datos = [self.__observacion__(y) for y in observaciones]
-                datos = pd.DataFrame(datos, columns=['variable', 'fecha','valor'])
-                if indexar:
-                    datos = datos.set_index(['variable', 'fecha']).unstack(level=0)['valor']
-                    t0 = datos.index[0]
-                    freq = self.indicadores.loc[Indicador,'freq']
-                    T = datos.shape[0]
-                    datos.index = pd.period_range(start=t0,freq=freq, periods=T)
-                    return datos.dropna(how='all')
-                else:
-                    return datos
+                datos = pd.DataFrame(datos, columns=['variable', 'fecha', 'valor'])
+
+                datos.index = pd.to_datetime(datos.fecha, format="%Y-%m-%d")
+                return datos['valor']
 
             print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
         else:
             print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
-
 
     def __buscar_frase__(self, frase):
         """Busca indicadores cuya descripción contenga la frase indicada
@@ -188,7 +179,7 @@ class ServicioWeb:
         CAMPOS = ['DESCRIPCION', 'descripcion']
         return pd.DataFrame([self.indicadores[campo].str.contains(frase, case=False) for campo in CAMPOS]).any()
 
-    def buscar(self, *, frase=None, todos=None, algunos=None, frecuencia=None, Unidad=None, Medida=None, periodo=None):
+    def buscar(self, todos=None, *, frase=None, algunos=None, frecuencia=None, Unidad=None, Medida=None, periodo=None):
 
         """buscar códigos de indicadores según su descripción
 
@@ -453,7 +444,7 @@ class ServicioWeb:
         print(treestr)
         return re.findall('\[([0-9]+)\]', treestr)
 
-    def datos(self, *Indicadores, FechaInicio=None, FechaFinal=None, SubNiveles=False, func=np.sum, freq=None):
+    def datos(self, *Indicadores, FechaInicio=None, FechaFinal=None, func=np.sum, freq=None, fillna=None, **indicadores):
         """Descargar datos del Servicio Web del BCCR
 
         Parameters
@@ -514,39 +505,53 @@ class ServicioWeb:
 
         >>> SW(cuentas, FechaInicio=2000, FechaFinal=2015)
         """
-        # desempacar Indicadores si viene en una colección
-        if len(Indicadores)==1 and hasattr(Indicadores[0], '__iter__') and type(Indicadores) is not str:
-            Indicadores = Indicadores[0]
 
-        # determinar si insumo es diccionario
-        if isinstance(Indicadores, dict):
-            renombrar  = True
-            variables = {str(k): v for k, v in Indicadores.items()} # convertir llaves a str, para renombrar
-        else:
-            renombrar = False
+        for indic in Indicadores:
+            if isinstance(indic, dict):
+                warnings.warn("En una futura versión, los indicadores deberán ser solicitados como pares de 'nombre=codigo.")
+                for key, value in indic.items():
+                    indicadores[value] = key
+            elif isinstance(indic, str) or isinstance(indic, int):
+                indicadores[str(indic)] = indic
+            elif hasattr(indic, '__iter__'):
+                for val in indic:
+                    indicadores[str(val)] = val
+            else:
+                raise('No sé cómo interpretar el indicador requerido')
 
         # Convertir numeros de cuadros a textos
-        Indicadores = [str(x) for x in Indicadores]
+        indicadores = {nombre: str(codigo)  for nombre, codigo in indicadores.items()}
 
-        datos = {codigo: self.__descargar__(codigo, FechaInicio, FechaFinal, SubNiveles) for codigo in Indicadores}
 
-        freqs = pd.Series({codigo: self.indicadores.loc[codigo, 'freq'] for codigo in Indicadores})
-        freqs = freqs.astype('category').cat.set_categories(['A', '6M', 'Q', 'M', 'W', 'D'], ordered=True)
+        # Descargar los datos
+        datos = {nombre: self.__descargar__(codigo, FechaInicio, FechaFinal) for nombre, codigo in indicadores.items()}
 
-        if len(freqs)>1:  # es necesario convertir frecuencias
-            freq = freq if freq else freqs.min()
+        # LLenar los espacios en blanco en la línea de tiempo
+        freqs = {nombre: self.indicadores.loc[codigo, 'freq'] for nombre, codigo in indicadores.items()}
+        nfreqs = len(set(freqs.values()))
+        datos = {nombre: serie.resample(freqs[nombre]).mean() for nombre, serie in datos.items()}
+
+        if isinstance(fillna, str):
+            fillna = fillna.lower()
+            if fillna in ('backfill', 'bfill', 'pad', 'ffill'):
+                datos = {nombre: serie.fillna(method=fillna) for nombre, serie in datos.items()}
+            else:
+                warnings.warn("Método de remplazo de valores faltantes debe ser uno de ('backfill', 'bfill', 'pad', 'ffill')")
+
+
+        # Convertir frecuencias, si es necesario o requerido
+        if nfreqs > 1 or freq:
+            freqs2 = pd.Series(freqs).astype('category').cat.set_categories(['A', '6M', 'Q', 'M', 'W', 'D'], ordered=True)
+            freq = freq if freq else freqs2.min()
             if callable(func):
-                func = {codigo: func for codigo in Indicadores}
+                func = {nombre: func for nombre in indicadores}
 
-            for codigo in Indicadores:
-                if freqs[codigo] != freq:
-                    datos[codigo] = datos[codigo].resample(freq).apply(func[codigo])
+            for nombre, serie in datos.items():
+                if freqs[nombre] != freq:
+                    datos[nombre] = serie.resample(freq).apply(func[nombre])
 
-        salida = pd.concat(datos.values(), axis=1)
-        if renombrar:
-            salida.rename(columns=variables, inplace=True)
+        return pd.DataFrame(datos)
 
-        return salida
 
     def __call__(self, *args, **kwargs):
         return self.datos(*args, **kwargs)
