@@ -17,7 +17,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from numpy import nan
 import re
-from .utils import parse_date_parameter
+from .utils import parse_date_parameter, infer_frequency
 
 import warnings
 
@@ -30,17 +30,16 @@ FRASE_AYUDA = """
 CLASE ServicioWeb
 
 Esta clase permite buscar y descargar datos de indicadores del servicio web del Banco Central de Costa Rica.
-Suponiendo que el objeto de clase ServicioWeb se llama "consulta":
+Suponiendo que el objeto de clase ServicioWeb se llama "SW":
     * para buscar indicadores, utilice 
-        consulta.buscar()
+        SW.buscar("nombre de un indicador")
     * para saber más detalles del indicador 8 (por ejemplo)
-        consulta.quien(8)
+        SW.quien(8)
     * para buscar las subcuentas de un indicador, digamos el 784
-        consulta.subcuentas(784)      
+        SW.subcuentas(784)      
     * para descargar datos de indicadors 4, 7 y 231 (por ejemplo), hay varias formas de hacerlo 
-        consulta(4, 7, 231)   # pasando los códigos directamente
-        consulta([4, 7, 231]) # pasando los códigos en una lista
-        consulta({4:'indicA', 7:'indicB', 231:'indicC'} # pasando los códigos en un diccionario, en 
+        SW(4, 7, 231)   # pasando los códigos directamente
+        SW(indicA=4, indicB=7, indicC=231) # pasando los códigos como valores de parámetros, en 
             cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.        
 """
 
@@ -160,8 +159,10 @@ class ServicioWeb:
                 return datos['valor']
 
             print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
+            print("Revise que este indicador efectivamente existe, o intente de nuevo la obtención de los datos.")
         else:
             print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
+            print("Revise que este indicador efectivamente existe, o intente de nuevo la obtención de los datos.")
 
     def __buscar_frase__(self, frase):
         """Busca indicadores cuya descripción contenga la frase indicada
@@ -189,7 +190,9 @@ class ServicioWeb:
             texto que debe aparecer en la descripción del indicador. Sólo una de estos tres parámetros debe utilizarse
             a la vez. 'frase' busca una coincidencia exacta, 'todos' que todas las palabras aparezcan (en cualquier
             orden), 'algunos' que al menos una de las palabras aparezca. La búsqueda no es sensible a mayúscula/minúscula.
-        frecuencia : str, optional
+            Si no se indica un parámetro [por ejemplo, SW.buscar('precios consumidor')], se asume que
+            SW.buscar(todos='precio consumidor')
+        frecuencia : str, optional. uno de ('A','6M','Q','M','W','D')
             mostrar solo indicadores que tengan la frecuencia indicada.
         Unidad : str, optional
             mostrar solo indicadores que tengan la unidad indicada
@@ -417,6 +420,40 @@ class ServicioWeb:
         self.__print_node__(ind.loc[A['cuenta'][:27]].node)
         print('\n')
 
+
+    def __nombre__(self, codigo):
+        """
+        Nombre del indicador con ese código en el catálogo. Si no existe, entonces el código mismo
+        Parameters
+        ----------
+        codigo int or str, código del indicador
+
+        Returns
+        -------
+        str
+        """
+        codigo = str(codigo)
+        return self.indicadores.loc[codigo, 'nombre'] if codigo in self.indicadores.index else codigo
+
+    def __frecuencia__(self, codigo, serie):
+        """
+        Frecuencia del indicador codigo. Si existe en el catálogo del paquete, usa el catálogo. De lo contrario, lo
+        infiere a partir del índice de los datos
+        Parameters
+        ----------
+        codigo int or str, código del indicador
+        serie pd.Series, datos indexados como serie de tiempo para inferir su frecuencia.
+
+        Returns
+        -------
+            str
+        """
+        if codigo in self.indicadores.index:
+            return self.indicadores.loc[codigo, 'freq']
+        else:
+            return infer_frequency(serie)
+
+
     def subcuentas(self, codigo):
         """Subcuentas de un indicador
 
@@ -444,26 +481,37 @@ class ServicioWeb:
         print(treestr)
         return re.findall('\[([0-9]+)\]', treestr)
 
-    def datos(self, *Indicadores, FechaInicio=None, FechaFinal=None, func=np.sum, freq=None, fillna=None, **indicadores):
-        """Descargar datos del Servicio Web del BCCR
+    def datos(self, *codigos, FechaInicio=None, FechaFinal=None, func=None, freq=None, fillna=None, **indicadores):
+        """
 
         Parameters
         ----------
-        Indicadores : iterable (ver notas y ejemplos)
-            Los códigos numéricos (como int o str) de los indicadores que se desean descargar.
+        codigos: sucesión de enteros o strings
+                Los códigos numéricos (como int o str) de los indicadores que se desean descargar (ver parámetro
+                `indicadores`). En el resultado, el indicador se identifica con el nombre que tiene en el catálogo de
+                cuentas; en caso de querer indicar un nombre distinto, solicitar el indicador usando el parámetro
+                `indicadores`.
         FechaInicio : str or int, optional
             fecha de la primera observación a descargar, formato dd/mm/yyyy (valor predeterminado es '01/01/1900'). Si es
             un int, se interpreta como el primero de enero del año indicado por ese int.
         FechaFinal : str or int, optional
             fecha de la última observación a descargar, formato dd/mm/yyyy (valor predeterminado es fecha del sistema).
             Si es un int, se interpreta como el 31 de diciembre del año indicado por ese int.
-        SubNiveles : bool, optional
-            True si desea descargar las subcuentas del indicador (si existen), False si se desea únicamente el indicador.
-            (valor predeterminado: False)
-        func : function, optional
-            función que se desea utilizar para transformar la frecuencia de los datos (predeterminado: suma)
+        func : function or dict of functions, optional
+            función que se desea utilizar para transformar la frecuencia de los datos (predeterminado: None).
+            Si se especifica una sola función, se usa la misma para todas las series que lo requiera. Para usar funciones
+            distintas puede pasar un diccionario {nombre-de-la-serie: funcion-a-usar,...}
         freq : str, optional
-            frecuencia a la que se quiere convertir los datos
+            frecuencia a la que se quiere convertir los datos. Si este parámetro no se indica y se requieren series de
+            distintas frecuencias, el resultado será un Data.Frame con la menor periodicidad de las series solicitadas.
+        fillna : str, one of ('backfill', 'bfill', 'pad', 'ffill').
+            Si hay datos faltantes (por ejemplo, fines de semana), cómo rellenar esos valores. 'backfill' y 'bfill' usan
+             el siguiente valor disponible (llena hacia atrás) mientras que 'pad' y 'ffill' usan el último valor
+             disponible (llena hacia adelante).
+        indicadores: pares de nombre=codigo, de las series requeridas
+             Este es el método preferible para indicar las series requeridas (en vez del parámetro `códigos`). Las series
+             se enumeran como pares de nombre=codigo, donde nombre es el nombre que tendrá el indicador en el DataFrame
+             resultante, y codigo es un número entero que identifica la serie en el servicio web del BCCR.
 
         Returns
         -------
@@ -477,12 +525,13 @@ class ServicioWeb:
 
         2. Si hay indicadores de distintas frecuecias, los transforma a la misma frecuencia según el método indicado.
 
-        3. A excepción de Indicadores, todos los parámetros deben usar palabra clave. Indicadores contiene todos los
-        parámetros posicionales que reciba la función.
+        3. A excepción de `codigos`, todos los parámetros deben usar palabra clave, aunque es preferible usar `indicadores`
+        en vez de `codigos`. (Ver los ejemplos)
 
         4. Hay varias maneras de indicar los Indicadores: (a) simplemente enumerándolos, (b) en una lista o tupla, y
-        (c) en un diccionario (método recomendado). En caso de tratarse de diccionario, los códigos se indican como las
-        llaves del diccionario, mientras que los valores del diccionario se usan para renombrar las columnas resultantes.
+        (c) en un diccionario (método obsoleto, es mejor usar el parámetro `indicadores`). En caso de tratarse de
+        diccionario, los códigos se indican como las llaves del diccionario, mientras que los valores del diccionario
+        se usan para renombrar las columnas resultantes.
 
         5. Las instancias de la clase ServicioWeb son ejecutables: si se llaman como una función, simplemente ejecutan la
         función datos()
@@ -490,32 +539,42 @@ class ServicioWeb:
         Examples
         --------
         >>> from bccr import SW
-        >>> SW.datos(33448) # o más fácil: SW(33448)
+        >>> SW(IMAE=35449, Inflación=25485) # forma preferible
 
-        >>> SW(33439, 33448, 33451, 33457)
+        >>> SW(35449, 25485)  # forma más rápida
 
-        >>> SW([33439, 33448, 33451, 33457])
-
-        >>> SW('33439', '33448', '33451', '33457')
+        >>> SW('35449', '25485')  # funciona, aunque más complicado
 
         >>> cuentas = {33439:'PIB', 33448:'Consumo', 33451:'Gasto', 33457:'Inversión'}
-        >>> SW(cuentas)
+        >>> SW(cuentas)    # esta forma es obsoleta, será eliminada en una versión futura
 
-        >>> SW(cuentas, FechaInicio='2000/01/01')
+        >>> SW(IMAE=35449, Inflación=25485, FechaInicio='2000/01/01')
 
-        >>> SW(cuentas, FechaInicio=2000, FechaFinal=2015)
+        >>> SW(IMAE=35449, Inflación=25485, FechaInicio=2000, FechaFinal=2015)
+
+        >>> SW(IMAE=35449, Inflación=25485, TPM=3541, func=np.mean, fillna='ffill') # IMAE e Inflación son series mensuales,
+        >>> # miestras que TPM es diaria. TPM se convierte en mensual calculando el promedio, habiendo sustituido los
+        >>> # valores faltantes con el último dato disponible
         """
 
-        for indic in Indicadores:
+        msg = """
+        En una futura versión, los indicadores deberán ser solicitados como pares de 'nombre=codigo', o bien 
+        como un listado de enteros. Por ejemplo
+            SW(TPM=3541, IMAE=913, Inflación=25485)
+        o bien
+            SW(3541, 913, 25485)                
+        """
+        for indic in codigos:
             if isinstance(indic, dict):
-                warnings.warn("En una futura versión, los indicadores deberán ser solicitados como pares de 'nombre=codigo.")
+                warnings.warn(msg)
                 for key, value in indic.items():
                     indicadores[value] = key
             elif isinstance(indic, str) or isinstance(indic, int):
-                indicadores[str(indic)] = indic
+                indicadores[self.__nombre__(indic)] = indic
             elif hasattr(indic, '__iter__'):
+                warnings.warn(msg)
                 for val in indic:
-                    indicadores[str(val)] = val
+                    indicadores[self.__nombre__(val)] = val
             else:
                 raise('No sé cómo interpretar el indicador requerido')
 
@@ -525,11 +584,10 @@ class ServicioWeb:
 
         # Descargar los datos
         datos = {nombre: self.__descargar__(codigo, FechaInicio, FechaFinal) for nombre, codigo in indicadores.items()}
-
-        # LLenar los espacios en blanco en la línea de tiempo
-        freqs = {nombre: self.indicadores.loc[codigo, 'freq'] for nombre, codigo in indicadores.items()}
+        # LLenar los espacios en blanco en la línea de tiemp
+        freqs = {nombre: self.__frecuencia__(codigo, datos[nombre]) for nombre, codigo in indicadores.items()}
         nfreqs = len(set(freqs.values()))
-        datos = {nombre: serie.resample(freqs[nombre]).mean() for nombre, serie in datos.items()}
+        datos = {nombre: serie.resample(freqs[nombre]).mean() for nombre, serie in datos.items() if serie is not None}
 
         if isinstance(fillna, str):
             fillna = fillna.lower()
@@ -537,17 +595,35 @@ class ServicioWeb:
                 datos = {nombre: serie.fillna(method=fillna) for nombre, serie in datos.items()}
             else:
                 warnings.warn("Método de remplazo de valores faltantes debe ser uno de ('backfill', 'bfill', 'pad', 'ffill')")
+        elif fillna is not None:
+            warnings.warn("Método de remplazo de valores faltantes debe ser uno de ('backfill', 'bfill', 'pad', 'ffill')")
 
 
         # Convertir frecuencias, si es necesario o requerido
         if nfreqs > 1 or freq:
             freqs2 = pd.Series(freqs).astype('category').cat.set_categories(['A', '6M', 'Q', 'M', 'W', 'D'], ordered=True)
             freq = freq if freq else freqs2.min()
+            if func is None:
+                msg = """
+                En una futura versión, si necesita cambiar la frecuencia de los datos deberá indicar la función a utilizar
+                para dicha conversión, ya sea con 'func=nombre_de_funcion' (se aplica esta función a todas las variable que
+                requieran cambiar de frecuencia), o bien con un diccionario con claves iguales a los nombres de indicadores
+                 (o códigos, si no asigna nombres) y valores iguales a la función a utilizar para ese indicador.
+                 
+                Utilizando func=numpy.sum para esta conversión. 
+                """
+                warnings.warn(msg)
+                func = np.sum
+
             if callable(func):
                 func = {nombre: func for nombre in indicadores}
 
             for nombre, serie in datos.items():
                 if freqs[nombre] != freq:
+                    if serie.isna().any():
+                        msg = f"Se detectaron valores faltantes en serie '{nombre}' antes de cambiarle de frecuencia.\n"
+                        msg += "Considere completar esos datos usando el parámetro 'fillna' de esta función."
+                        warnings.warn(msg)
                     datos[nombre] = serie.resample(freq).apply(func[nombre])
 
         return pd.DataFrame(datos)

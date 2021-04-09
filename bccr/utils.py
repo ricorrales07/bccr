@@ -178,3 +178,25 @@ def parse_date_parameter(fecha, inicio=True):
             raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" para indicar fechas')
     else:
         raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" o un entero(yyyy) para indicar fechas')
+
+
+def trim_data(df):
+    """
+    Removes missing values from start and end of series or dataframe
+    Parameters
+    ----------
+    df: series or dataframe
+
+    Returns
+    -------
+    df
+    """
+    return df[df.first_valid_index():df.last_valid_index()]
+
+POSSIBLE_FREQUENCIES = {pd.Timedelta(ndias, 'D'): freq for ndias, freq in zip(
+    [1, 7, 28, 29, 30, 31, 90, 91, 92, 181,182,183,184,365,366],
+    ['D', 'W', 'M', 'M', 'M', 'M', 'Q', 'Q', 'Q', '6M', '6M', '6M', '6M', 'A', 'A'])}
+
+def infer_frequency(serie):
+    raw_freq = serie.index.to_series().diff().value_counts().index[0]
+    return POSSIBLE_FREQUENCIES[raw_freq]
