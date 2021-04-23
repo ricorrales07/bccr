@@ -46,6 +46,20 @@ Suponiendo que el objeto de clase ServicioWeb se llama "SW":
 
 
 
+FUNCS = {
+    'mean': lambda df: np.mean(df.values),
+    'sum': lambda df: np.sum(df.values),
+    'last': lambda df: df.iloc[-1],
+    'first': lambda df: df.iloc[0],
+    'nanmean': np.nanmean,
+    'nansum': np.nansum,
+    'nanlast': lambda df: df.loc[df.last_valid_index()],
+    'nanfirst': lambda df: df.loc[df.first_valid_index()],
+}
+
+
+
+
 #TODO: Arreglar problema de fechas duplicadas! ejemplo monex 3223 en 2010
 #TODO: Arreglar missing values mal codificados! ejemplo monex 3223 aparecen 0s en vez de missing values
 
@@ -146,6 +160,9 @@ class ServicioWeb:
 
         host = 'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos'
         resp = requests.get(host, params)
+        error_msg = f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje {resp.reason}\n'
+        error_msg += "Revise que este indicador efectivamente existe, o intente de nuevo la obtención de los datos."
+
 
         if resp.status_code == 200:  # datos recibidos exitosamente
             rawdata = resp.text
@@ -158,11 +175,10 @@ class ServicioWeb:
                 datos.index = pd.to_datetime(datos.fecha, format="%Y-%m-%d")
                 return datos['valor']
 
-            print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
-            print("Revise que este indicador efectivamente existe, o intente de nuevo la obtención de los datos.")
+            print(error_msg)
         else:
-            print(f'\nNo se obtuvieron datos de indicador {Indicador}. Servidor respondio con mensaje ', resp.reason)
-            print("Revise que este indicador efectivamente existe, o intente de nuevo la obtención de los datos.")
+            print(error_msg)
+        return None
 
     def __buscar_frase__(self, frase):
         """Busca indicadores cuya descripción contenga la frase indicada
@@ -584,8 +600,16 @@ class ServicioWeb:
 
         # Descargar los datos
         datos = {nombre: self.__descargar__(codigo, FechaInicio, FechaFinal) for nombre, codigo in indicadores.items()}
+
+        # Desechar campos de indicadores no descargados
+        datos = {nombre: df for nombre, df in datos.items() if df is not None}
+
+        if len(datos) == 0:  # no se encontró ninguna serie, devolver DataFrame vacío.
+            return pd.DataFrame(columns=indicadores.keys())
+
+
         # LLenar los espacios en blanco en la línea de tiemp
-        freqs = {nombre: self.__frecuencia__(codigo, datos[nombre]) for nombre, codigo in indicadores.items()}
+        freqs = {nombre: self.__frecuencia__(codigo, datos[nombre]) for nombre, codigo in indicadores.items() if nombre in datos}
         nfreqs = len(set(freqs.values()))
         datos = {nombre: serie.resample(freqs[nombre]).mean() for nombre, serie in datos.items() if serie is not None}
 
@@ -615,8 +639,15 @@ class ServicioWeb:
                 warnings.warn(msg)
                 func = np.sum
 
-            if callable(func):
-                func = {nombre: func for nombre in indicadores}
+            if type(func) is str:
+                if func not in FUNCS.keys():
+                    raise ValueError("El parámetro 'func' debe ser uno de " + str(list(FUNCS.keys())))
+                else:
+                    funciones = {nombre: FUNCS[func] for nombre in indicadores}
+            elif callable(func):
+                funciones = {nombre: func for nombre in indicadores}
+            else:
+                raise ValueError("El parámetro 'func' debe ser un str, función, o diccionario")
 
             for nombre, serie in datos.items():
                 if freqs[nombre] != freq:
@@ -624,9 +655,11 @@ class ServicioWeb:
                         msg = f"Se detectaron valores faltantes en serie '{nombre}' antes de cambiarle de frecuencia.\n"
                         msg += "Considere completar esos datos usando el parámetro 'fillna' de esta función."
                         warnings.warn(msg)
-                    datos[nombre] = serie.resample(freq).apply(func[nombre])
+                    datos[nombre] = serie.resample(freq).apply(funciones[nombre])
 
-        return pd.DataFrame(datos)
+        datos = pd.DataFrame(datos)
+        datos.index = datos.index.to_period()
+        return datos
 
 
     def __call__(self, *args, **kwargs):
