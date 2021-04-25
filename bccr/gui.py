@@ -1,4 +1,4 @@
-import dash
+from jupyter_dash import JupyterDash
 import pandas as pd
 from dash.dependencies import Input, Output, State
 import dash_table
@@ -7,7 +7,6 @@ import dash_html_components as html
 from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
 from dash_table.Format import Format, Scheme
-import plotly.graph_objects as go
 import plotly.express as px
 from bccr import SW
 import io
@@ -15,7 +14,6 @@ from contextlib import redirect_stdout
 
 from datetime import date
 
-import numpy as np
 import webbrowser
 
 DATOS_PARA_DESCARGAR = [pd.DataFrame()]
@@ -23,16 +21,6 @@ DATOS_PARA_DESCARGAR = [pd.DataFrame()]
 
 # Esta parte controla asuntos de estética de la página
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
-colors = {
-    'background': 'SteelBlue',
-    'text': 'White',
-    'controls': '#DDDDDD',
-    'buttons': 'Orange'
-}
-
-
-
 
 
 
@@ -50,12 +38,12 @@ La interfase está basada en el paquete de Python `bccr` desarrollada por el aut
 
 En esta versión, la interfase solo permite descargar datos a través del `Servicioweb`. 
 
-Los datos se descargan y se presentan en una tabla, en la cual cada fila corresponde a un período (día, mes, trimestre, año) y cada columna a un indicador. 
+Los datos se descargan y se presentan en una tabla en formato *tidy*, en la cual cada fila corresponde a un período (día, mes, trimestre, año) y cada columna a un indicador. 
 
 ---
 
 ## Parámetros de búsqueda (panel izquierdo):
-### Indicadores a descargar
+### Indicadores
 En esta tabla se indican los códigos de los indicadores que se desean descargar, así como el nombre que se le quiere dar al indicador
 en la tabla de datos. Puede agregar indicadores usando el botón "Agregar otro código".
 
@@ -79,6 +67,7 @@ Esta operación se hace antes de la agregación de datos (si se cambia la frecue
 ## Viñetas
 ### Datos
 Presenta una tabla con los datos descargados. Puede descargar estos datos oprimiendo los botones que aparecen en la parte superior.
+Además, en la parte superior de la viñeta aparece el código de Python que descarga los datos mostrados en la tabla.
 
 ### Gráfico
 Presenta un gráfico de todas las series descargadas. Puede ocultar y volver a mostrar series individuales haciendo clic a su
@@ -113,7 +102,7 @@ Este paquete no es un producto oficial de BCCR. El autor lo provee para facilita
 
 
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets, prevent_initial_callbacks=True)
+app = JupyterDash(__name__, external_stylesheets=external_stylesheets, prevent_initial_callbacks=True)
 app.layout = html.Div([
     html.Div(
         children=[
@@ -491,7 +480,7 @@ def display_output(n_clicks, rows, FechaInicio, FechaFinal, freq, func, fillna):
     State("file-name", "value"),
     prevent_initial_call=True,
 )
-def func(n_clicks, nombre):
+def descargar_excel(n_clicks, nombre):
     datos = DATOS_PARA_DESCARGAR[0]
     return send_data_frame(datos.to_excel, f"{nombre}.xlsx", sheet_name="datos")
 
@@ -502,7 +491,7 @@ def func(n_clicks, nombre):
     State("file-name", "value"),
     prevent_initial_call=True,
 )
-def func(n_clicks, nombre):
+def descargar_stata(n_clicks, nombre):
     datos = DATOS_PARA_DESCARGAR[0]
     return send_data_frame(datos.to_stata, f"{nombre}.dta")
 
@@ -513,7 +502,7 @@ def func(n_clicks, nombre):
     State("file-name", "value"),
     prevent_initial_call=True,
 )
-def func(n_clicks, nombre):
+def descargar_csv(n_clicks, nombre):
     datos = DATOS_PARA_DESCARGAR[0]
     return send_data_frame(datos.to_csv, f"{nombre}.csv")
 
@@ -521,13 +510,13 @@ def func(n_clicks, nombre):
 
 
 
-def BCCR(colab=False):
+def GUI(colab=False):
     if colab:
         app.run_server(mode='external')
     else:
-        #webbrowser.open('http://127.0.0.1:8050/')
+        webbrowser.open('http://127.0.0.1:8050/')
         app.run_server(debug=False)
 
 
 if __name__ == '__main__':
-    BCCR()
+    GUI()
