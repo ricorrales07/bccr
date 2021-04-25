@@ -167,17 +167,28 @@ def columns_rename(db: pd.DataFrame):
     print('}')
 
 
-def parse_date_parameter(fecha, inicio=True):
-    if type(fecha) is int:
-        return f'01/01/{fecha}' if inicio else '31/12/{fecha}'
-    elif type(fecha) is str:
+def parse_date_parameter(fecha, *, inicio=True, año_primero=False):
+    año, mes, día = ('', '01', '01') if inicio else ('', '12', '31')
+    fecha_válida = False
+
+    if isinstance(fecha, int):
+        año = str(fecha)
+        fecha_válida = True
+    elif isinstance(fecha, str):
         dig = re.findall('([0-9])', fecha)
-        if len(dig)==8:
-            return '/'.join(''.join(zz) for zz in (dig[6:], dig[4:6], dig[:4]))
-        else:
-            raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" para indicar fechas')
+        if len(dig)==4:
+            año = dig
+            fecha_válida = True
+        elif len(dig)==8:
+            año, mes, día = dig[:4], dig[4:6], dig[6:]
+            fecha_válida = True
+
+    if fecha_válida:
+        return f"{año}/{mes}/{día}" if año_primero else f"{día}/{mes}/{año}"
     else:
-        raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" o un entero(yyyy) para indicar fechas')
+        raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" para indicar fechas, o yyyy para indicar una año')
+
+
 
 
 def trim_data(df):
