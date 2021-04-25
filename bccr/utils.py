@@ -1,7 +1,8 @@
 import re
 import numpy as np
 import pandas as pd
-
+from datetime import date
+from pandas import offsets
 
 def findFirstElement(pattern: str, stringList):
     idx = 0
@@ -168,25 +169,40 @@ def columns_rename(db: pd.DataFrame):
 
 
 def parse_date_parameter(fecha, *, inicio=True, año_primero=False):
-    año, mes, día = ('', '01', '01') if inicio else ('', '12', '31')
-    fecha_válida = False
+    err_msg = """Formato de fecha no válido! Utilice:
+    "yyyy/mm/dd" o  "dd/mm/yyyy" para indicar días
+    "yyyy/mm" o "mm/yyyy" para indicar meses
+    "yyyy" o yyyy (como int) para indicar una año
+    """
 
-    if isinstance(fecha, int):
-        año = str(fecha)
-        fecha_válida = True
-    elif isinstance(fecha, str):
-        dig = re.findall('([0-9])', fecha)
-        if len(dig)==4:
-            año = dig
-            fecha_válida = True
-        elif len(dig)==8:
-            año, mes, día = dig[:4], dig[4:6], dig[6:]
-            fecha_válida = True
+    componentes = [x for x in re.split('\D', str(fecha)) if x]
+    tamaños = [len(a) == 4 for a in componentes]
 
-    if fecha_válida:
-        return f"{año}/{mes}/{día}" if año_primero else f"{día}/{mes}/{año}"
+    if sum(tamaños) != 1 and not(tamaños[0] or tamaños[-1]):
+        raise Exception(err_msg)  # debe haber un solo año, y debe aparecer al inicio o al final
+
+    if tamaños[-1]:  # año aparece de último
+        componentes.reverse()
+
+    componentes = [int(x) for x in componentes]
+    ncomp = len(componentes)
+
+
+
+    if ncomp == 1:
+        año = componentes[0]
+        fecha_nueva = date(año, 1, 1) if inicio else date(año, 12, 31)
+    elif ncomp == 2:
+        año, mes = componentes
+        fecha_nueva = date(año, mes, 1)
+        if not inicio:
+            fecha_nueva = (fecha_nueva + offsets.MonthEnd()).date()
+    elif ncomp == 3:
+        fecha_nueva = date(*componentes)
     else:
-        raise Exception('Formato de fecha no válido: Utilice "yyyy/mm/dd" para indicar fechas, o yyyy para indicar una año')
+        raise Exception(err_msg)
+
+    return fecha_nueva.strftime("%Y/%m/%d" if año_primero else "%d/%m/%Y")
 
 
 
