@@ -1,8 +1,30 @@
 """
-gee: un módulo para definir la clase ServicioWeb
+gee: Un módulo para definir la clase ServicioWeb
 
 Este módulo defile la clase ServicioWeb y crea una instancia de la misma, SW. Esta clase permite descargar datos
-del servicio web del Banco Central de Costa Rica.
+del ServicioWeb del Banco Central de Costa Rica (https://www.bccr.fi.cr/indicadores-economicos/servicio-web) .
+
+La forma usual de utilizar esta clase es
+
+    >>> from bccr import SW
+
+    * para buscar el código de algún indicador de interés, utilice
+
+    >>> SW.buscar("nombre de un indicador")
+
+    * para saber más detalles del indicador 3541 (por ejemplo)
+
+    >>> SW.quien(3541)
+
+    * para buscar las subcuentas de un indicador, digamos el 779
+
+    >>> SW.subcuentas(779)
+
+    * para descargar datos de indicadors 3, 4 y 22 (por ejemplo), hay varias formas de hacerlo
+
+    >>> SW(indicA=4, indicB=7, indicC=231) # pasando los códigos como valores de parámetros, en
+            cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.
+    >>> SW(3, 4, 22)   # pasando los códigos directamente (no recomendado)
 """
 
 
@@ -12,7 +34,7 @@ import numpy as np
 from anytree import Node, RenderTree
 import requests
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from bs4 import BeautifulSoup
 from numpy import nan
@@ -30,7 +52,9 @@ FRASE_AYUDA = """
 CLASE ServicioWeb
 
 Esta clase permite buscar y descargar datos de indicadores del servicio web del Banco Central de Costa Rica.
+
 Suponiendo que el objeto de clase ServicioWeb se llama "SW":
+
     * para buscar indicadores, utilice 
         SW.buscar("nombre de un indicador")
     * para saber más detalles del indicador 8 (por ejemplo)
@@ -41,6 +65,7 @@ Suponiendo que el objeto de clase ServicioWeb se llama "SW":
         SW(4, 7, 231)   # pasando los códigos directamente
         SW(indicA=4, indicB=7, indicC=231) # pasando los códigos como valores de parámetros, en 
             cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.        
+    
 """
 
 
@@ -71,11 +96,11 @@ class ServicioWeb:
 
     Attributes
     ----------
-    nombre : str, optional
+    nombre : str
         El nombre del usuario registrado en el servicio web del BCCR
-    correo : str, optional
+    correo : str
         El correo electrónico registrado por el usuario en el servicio web.
-    token : str, optional
+    token : str
         El token recibido por el usuario de parte del BCCR para tener acceso al servicio web.
     indicadores : pd.DataFrame, optional
         una table con la descripción de los indicadores disponibles en el servicio web.
@@ -84,13 +109,11 @@ class ServicioWeb:
     --------
     >>> from bccr import ServicioWeb
     >>> consulta = ServicioWeb('Ratón Pérez', 'raton.perez@correo.com', '4SDLJUHKEZ')  # si Ratón Pérez se registró en el servicio web
-
-    >>> consulta = ServicioWeb()  # usando las credenciales propias de este paquete de Python.
     """
-    nombre: str = 'Paquete BCCR Python'
-    correo: str = 'paquete.bccr.python@outlook.com'
-    token: str = '5CMRCBTHMT'
-    indicadores: pd.DataFrame = pd.read_pickle(PICKLE_FILE)
+    nombre: str
+    correo: str
+    token: str
+    indicadores: pd.DataFrame
 
     def __usuario__(self):
         """Credenciales de usuario
@@ -273,7 +296,7 @@ class ServicioWeb:
         return results[CAMPOS]
 
 
-    def actualizar_catalogo(self):
+    def __actualizar_catalogo__(self):
         """Actualiza el catálago de indicadores
 
         Returns
@@ -672,4 +695,7 @@ class ServicioWeb:
         return self.__str__()
 
 
-SW = ServicioWeb()
+SW = ServicioWeb(nombre = 'Paquete BCCR Python',
+                 correo = 'paquete.bccr.python@outlook.com',
+                 token = '5CMRCBTHMT',
+                 indicadores = pd.read_pickle(PICKLE_FILE))
