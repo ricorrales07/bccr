@@ -11,7 +11,7 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='bccr',
-    version='2021.05',
+    version='2021.05.1',
     description='Herramientas para descargar datos del Banco Central de Costa Rica',
     long_description=long_description,
     long_description_content_type='text/markdown',
