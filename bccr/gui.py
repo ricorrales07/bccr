@@ -33,8 +33,8 @@ El propósito de esta interfase gráfica es facilitar la búsqueda y descarga de
 
 La interfase está basada en el paquete de Python `bccr` desarrollada por el autor de esta interfase. El paquete ofrece dos clases para buscar datos y descargarlos:
 
-* [`ServicioWeb`](http://randall-romero.com/demo-bccr-servicioweb/): descarga indicadores individuales del [servicio web](https://www.bccr.fi.cr/seccion-indicadores-economicos/servicio-web) del Banco Central.
-* [`PaginaWeb`](http://randall-romero.com/demo-bccr-paginaweb/): descarga cuadros individuales (algunos con un solo indicador, otros con varios), de la página de [indicadores económicos](https://www.bccr.fi.cr/seccion-indicadores-economicos/indicadores-económicos).
+* [`ServicioWeb`](http://randall-romero.com/demo-bccr-servicioweb/): descarga indicadores individuales del [servicio web](https://www.bccr.fi.cr/indicadores-economicos/servicio-web) del Banco Central.
+* [`PaginaWeb`](http://randall-romero.com/demo-bccr-paginaweb/): descarga cuadros individuales (algunos con un solo indicador, otros con varios), de la página de [indicadores económicos](https://www.bccr.fi.cr/indicadores-economicos).
 
 En esta versión, la interfase solo permite descargar datos a través del `Servicioweb`. 
 
@@ -327,19 +327,6 @@ def add_row(n_clicks, rows, columns):
     if n_clicks > 0:
         rows.append({c['id']: '' for c in columns})
     return rows
-
-"""
-@app.callback(
-    Output('seleccionar-indicadores', 'columns'),
-    State('adding-rows-name', 'value'),
-    State('seleccionar-indicadores', 'columns'))
-def update_columns(value, existing_columns):
-    existing_columns.append({
-        'id': value, 'name': value,
-        'renamable': True, 'deletable': True
-    })
-    return existing_columns
-"""
 
 
 # FUNCIÓN PARA CONSULTAR QUIÉN ES UNA CUENTA

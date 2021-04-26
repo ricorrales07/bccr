@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import time
+import warnings
 import webbrowser
 
 from .utils import parse_date_parameter
@@ -29,59 +30,69 @@ Suponiendo que el objeto de clase PaginaWeb se llama "consulta":
 
 @dataclass
 class PaginaWeb:
-    cuadros: pd.DataFrame = pd.read_pickle(PICKLE_FILE)
+    cuadros: pd.DataFrame
 
-    def api(self, Cuadro, FechaInicio=None, FechaFinal=None, excel=True, abrir=False):
+    def api(self, Cuadro, *, FechaInicio=None, FechaFinal=None, excel=True, abrir=False):
         """
-            Builds a valid url to access data from the BCCR website
+        Construye un URL para obtener datos del sitio de indicadores económicos del BCCR
 
         Parameters
         ----------
-        Cuadro  : A number identifying the BCCR's data table (integer).
-        FechaInicio  : The FechaInicio year to download (integer, default=None).
-        FechaFinal   : The FechaFinal year to download (integer, default=None)
-        excel   : Whether to export query as Excel file (boolean, default=TRUE)
-        abrir   : Whether to abrir the table in the computer's browser (boolean, default=FALSE)
-
+        Cuadro:  int
+              Número que identifica el cuadro que desea descargarse del sitio web del BCCR
+        FechaInicio : str or int, optional
+            fecha de la primera observación a descargar. Ver nota 1 de la función `datos` para detalles de formato.
+        FechaFinal : str or int, optional
+            fecha de la última observación a descargar. Ver nota 1 de la función `datos` para detalles de formato.
+        excel: bool (opcional, predeterminado = True)
+            Si `True`, obtiene la versión Excel de los datos, `False` obtiene la versión HTML
+        abrir: bool (opcional, predeterminado = True)
+            Si `True`, abre la página web indicada por el URL en el navegador de internet predeterminado
         Returns
         -------
-            A valid URL to download the data from indicated Cuadro (string).
+            El URL para descargar los datos del cuadro indicado: str
 
         Examples
         --------
-            1. Get the url to download the consumer price index (Cuadro 9), using default settings
+            1. Obtener el URL  del IPC (Cuadro 9)
 
-            >>> self.api(9)
-            http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=9&Exportar=True&Excel=True
+            >>> from bccr import PW
+            >>> PW.api(9)
 
-            2. Get the url to download the money supply (M1, Cuadro 125) since 2010
+            'https://gee.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=9&Exportar=True&Excel=True'
 
-            >>> self.api(125, 2010)
-            http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125&FecInicial=2010/01/01&Exportar=True&Excel=True
+            2. URL para datos del M1 desde enero de 2010
 
-            3. Get the url to download the non-tradable CPI (Cuadro 289) between 2010 and 2015
+            >>> PW.api(125, FechaInicio=2010)
 
-            >>> self.api(289, 2010, 2015)
-            http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=289&FecInicial=2010/01/01&FecFinal=2015/12/31&Exportar=True&Excel=True
+            'https://gee.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125&FecInicial=2010/01/01&Exportar=True&Excel=True'
 
-            4. Get url to download money supply between 2010 and 2015, but in HTML format (as opposed to the default Excel format)
+            3. URL para datos del IPC no transable (Cuadro 289) entre 2010 y 2015
 
-            >>> self.api(125, 2010, 2015, excel=False)
-            http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125&FecInicial=2010/01/01&FecFinal=2015/12/31
+            >>> PW.api(289, FechaInicio=2010, FechaFinal=2015)
 
-            5. Same as before, but using default dates. The abrir=True option opens your default browser with the selected data.
+            'https://gee.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=289&FecInicial=2010/01/01&FecFinal=2015/12/31&Exportar=True&Excel=True'
 
-            >>> self.api(125, excel=False, abrir=True)  # opens link in browser
-            http://indicadoreseconomicos.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125
+            4. URL para el M1 entre 2010 y 2015, pero en formato HTML (en vez del formato Excel predeterminado)
+
+            >>> PW.api(125, FechaInicio=2010, FechaFinal=2015, excel=False)
+
+            'https://gee.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125&FecInicial=2010/01/01&FecFinal=2015/12/31'
+
+            5. Igual que el anterior, pero usando fechas predeterminadas. La opción `abrir=True` muestra los datos en su navegador de internet predeterminado
+
+            >>> PW.api(125, excel=False, abrir=True)  # opens link in browser
+
+            'https://gee.bccr.fi.cr/indicadoreseconomicos/Cuadros/frmVerCatCuadro.aspx?CodCuadro=125'
         """
         bccr_web = "https://gee.bccr.fi.cr/indicadoreseconomicos/"
 
         bccr_web += "Cuadros/frmVerCatCuadro.aspx?"
         params = dict(CodCuadro=Cuadro)
         if FechaInicio:
-            params['FecInicial'] = parse_date_parameter(FechaInicio, inicio=True)
+            params['FecInicial'] = parse_date_parameter(FechaInicio, inicio=True, año_primero=True)
         if FechaFinal:
-            params['FecFinal'] = parse_date_parameter(FechaFinal, inicio=False)
+            params['FecFinal'] = parse_date_parameter(FechaFinal, inicio=False, año_primero=True)
         if excel:
             params['Exportar'] = True
             params['Excel'] = True
@@ -95,11 +106,12 @@ class PaginaWeb:
 
     def web(self, Cuadro):
         """
-            Abre el cuadro especificado en el sitio del BCCR, usando el navegador de Internet predeterminado.
+        Abre el cuadro especificado en el sitio del BCCR, usando el navegador de Internet predeterminado.
 
         Parameters
         ----------
-        Cuadro   : Un número que identifica un cuadro del BCCR (int).
+        Cuadro:  int or str
+             Número de cuadro que se desea verificar
 
         Returns
         -------
@@ -107,9 +119,9 @@ class PaginaWeb:
 
         Examples
         --------
-            1. Abrir cuadro 125
+        Para abrir el cuadro 125
 
-            >>> self.web(125)
+        >>> self.web(125)
         """
 
         self.api(Cuadro, excel=False, abrir=True)
@@ -229,58 +241,173 @@ class PaginaWeb:
 
         return data
 
-    def datos(self, *Cuadros, FechaInicio=None, FechaFinal=None, func=np.sum, freq=None, info=False):
+    def soporte(self, cuadro):
         """
-        Descargar datos del Servicio Web del BCCR:
+        Indica si un `cuadro` específico puede descargarse con PaginaWeb
+
+        Parameters
+        ----------
+        cuadro: int o str
+            Número de cuadro que se desea verificar
+
+        Returns
+        -------
+            bool
+
+        """
+        return int(cuadro) in self.cuadros.index
+
+
+    def __nombre__(self, cuadro):
+        """
+        Nombre del indicador con ese código en el catálogo. Si no existe, entonces el código mismo
+        Parameters
+        ----------
+        codigo int or str, código del indicador
+
+        Returns
+        -------
+        str
+        """
+        return self.cuadros.loc[cuadro, 'title'] if self.soporte(cuadro) else str(cuadro)
+
+
+    def datos(self, *Cuadros, FechaInicio=None, FechaFinal=None, func=np.sum, freq=None, info=False, **indicadores):
+        """ Descargar datos del sitio de Indicadores Económicos del BCCR
+
         Construye una consulta por método GET a partir de los parámetros proporcionados, para cada uno de los
         Indicadores solicitados. Descarga los datos, los transforma en una tabla de datos de Pandas.
         Si hay indicadores de distintas frecuecias, los transforma a la misma frecuencia según el método indicado.
 
         Parameters
         ----------
-        Cuadros:  lista de cuadros a consultar (str o int o iterable)
-        FechaInicio: fecha de primera observación, formato dd/mm/yyyy. (str, opcional, '01/01/1900')
-        FechaFinal: fecha de primera observación, formato dd/mm/yyyy. (str, opcional, fecha de hoy)
-        SubNiveles: si descargar subniveles del Indicador (bool, opcional, False)
-
+        Cuadros: sucesión de enteros o strings
+                Los códigos numéricos (como int o str) de los cuadros que se desean descargar (ver parámetro
+                `indicadores`). En el resultado, el indicador se identifica con el nombre que tiene en el catálogo de
+                cuentas; en caso de querer indicar un nombre distinto, solicitar el cuadro usando el parámetro
+                `indicadores`
+        FechaInicio : str or int, optional
+            fecha de la primera observación a descargar. Ver nota 6 abajo para más detalles.
+        FechaFinal : str or int, optional
+            fecha de la última observación a descargar. Ver nota 6 abajo para más detalles.
+        func
+        freq : str, optional
+            frecuencia a la que se quiere convertir los datos. Si este parámetro no se indica y se requieren series de
+            distintas frecuencias, el resultado será un Data.Frame con la menor periodicidad de las series solicitadas.
+        info:  bool, optional (default=False)
+            Si `True`, se imprime metadata del cuadro descargado, así como un hipervículo para consultar los datos en el
+            sitio de Internet del BCCR
+        indicadores: pares de nombre=codigo, de los cuadros requeridos
+             Este es el método preferible para indicar las series requeridas (en vez del parámetro `Códigos`). Las series
+             se enumeran como pares de nombre=codigo, donde nombre es el nombre que tendrá el indicador en el DataFrame
+             resultante, y codigo es un número entero que identifica el cuadro en la página de indicadores económicos del BCCR.
         Returns
         -------
-        Datos en formato pandas.DataFrame
+        pd.DataFrame
+            una tabla con los datos solicitados, filas indexadas por tiempo, cada columna es un indicador.
+
+        Notes
+        -----
+        1. Esta función construye un URL a partir de los parámetros proporcionados, para cada uno de los Indicadores solicitados.
+        Descarga los datos, los transforma en una tabla de datos de Pandas.
+
+        2. Si hay indicadores de distintas frecuecias, los transforma a la misma frecuencia según el método indicado.
+
+        3. A excepción de `*Cuadros`, todos los parámetros deben usar palabra clave, aunque es preferible usar el parámetro
+        `indicadores` en vez de `*Cuadros`. (Ver los ejemplos)
+
+        4. Hay varias maneras de indicar los Indicadores: (a) simplemente enumerándolos, (b) en una lista o tupla, y
+        (c) en un diccionario (método obsoleto, es mejor usar el parámetro `indicadores`). En caso de tratarse de
+        diccionario, los códigos se indican como las llaves del diccionario, mientras que los valores del diccionario
+        se usan para renombrar las columnas resultantes.
+
+        5. Las instancias de la clase PaginaWeb son ejecutables: si se llaman como una función, simplemente ejecutan la
+        función datos()
+
+        6. El formato de fechas es muy flexible. Por ejemplo, todas estas expresiones son válidas:
+
+        - Para indicar el año 2015: se puede emplear tanto un `int` como un `str`
+
+        >>>   FechaInicio = 2015 # se interpreta como  1 de enero de 2015
+        >>>   FechaFinal = "2015"  # se interpreta como 31 de diciembre de 2015
+
+        - Para indicar el mes marzo de 2017: cualquiera de estas expresiones es válida
+
+         >>> "2017-03"
+         >>> "2017/03"
+         >>> "2017m3"
+         >>> "03/2017"
+         >>> "03-2017"
+
+         En `FechaInicio=` resulta en 1 de marzo de 2017, en `FechaFinal=` resulta en 31 de marzo de 2017.
+
+        - Para indicar el 12 de agosto de 2018:
+
+         >>> "2017/8/12"
+         >>> "2017-08-12"
+         >>> "12/8/2017"
+
+        Observe que para separar los componentes de una fecha se puede usar cualquier caracter no numérico (usualmente `/` o `-`).
+
+        Examples
+        --------
+        La forma preferible de solicitar los indicadores es como pares de `nombre=cuadro`, de manera que `nombre` se utilice
+        como encabezado de columna en la tabla de datos resultante:
+
+        >>> from bccr import PW
+        >>> SW(M1=125, Npp=177)
+
         """
-        # desempacar Indicadores si viene en una colección
-        if len(Cuadros)==1 and hasattr(Cuadros[0], '__iter__') and type(Cuadros) is not str:
-            Cuadros = Cuadros[0]
 
-        # determinar si insumo es diccionario
-        if isinstance(Cuadros, dict):
-            renombrar = True
-            variables = {str(k): v for k, v in Cuadros.items()}  # convertir llaves a str, para renombrar
-        else:
-            renombrar = False
+        msg = """
+        En una futura versión, los indicadores deberán ser solicitados como pares de 'nombre=codigo', o bien 
+        como un listado de enteros. Por ejemplo
+            PW(M1=125, Npp=177)
+        o bien
+            PW(125, 177)                
+        """
 
-        # Convertir numeros de cuadros a enteros
-        Cuadros = [int(x) for x in Cuadros]
 
-        #__parse__(self, chart, first=None, last=None, freq=None, func=None, quiet=True):
-        datos = {codigo: self.__parse__(codigo, first=FechaInicio, last=FechaFinal, freq=freq, func=func, quiet=not info) for codigo in Cuadros}
+        for indic in Cuadros:
+            if isinstance(indic, dict):
+                warnings.warn(msg)
+                for key, value in indic.items():
+                    indicadores[value] = int(key)
+            elif isinstance(indic, str) or isinstance(indic, int):
+                indicadores[self.__nombre__(indic)] = int(indic)
+            elif hasattr(indic, '__iter__'):
+                warnings.warn(msg)
+                for val in indic:
+                    indicadores[self.__nombre__(val)] = int(val)
+            else:
+                raise('No sé cómo interpretar el indicador requerido')
 
-        freqs = pd.Series({codigo: self.cuadros.loc[codigo, 'freq'] for codigo in Cuadros})
-        freqs = freqs.astype('category').cat.set_categories(['A', '6M', 'Q', 'M', 'W', 'D'], ordered=True)
+        indicadores_válidos = dict()
+        for nombre, codigo in indicadores.items():
+            if self.soporte(codigo):
+                indicadores_válidos[nombre] = codigo
+            else:
+                print(f"PaginaWeb aún no tiene soporte para el cuadro {codigo}, o bien no existe")
 
-        if len(freqs)>1:  # es necesario convertir frecuencias
-            freq = freq if freq else freqs.min()
-            if callable(func):
-                func = {codigo: func for codigo in Cuadros}
+        if indicadores_válidos:
+            #__parse__(self, chart, first=None, last=None, freq=None, func=None, quiet=True):
+            datos = {nombre: self.__parse__(codigo, first=FechaInicio, last=FechaFinal, freq=freq, func=func, quiet=not info) for nombre, codigo in indicadores_válidos.items()}
 
-            for codigo in Cuadros:
-                if freqs[codigo] != freq:
-                    datos[codigo] = datos[codigo].resample(freq).apply(func[codigo])
+            freqs = pd.Series({codigo: self.cuadros.loc[codigo, 'freq'] for codigo in indicadores_válidos.values()})
+            freqs = freqs.astype('category').cat.set_categories(['A', '6M', 'Q', 'M', 'W', 'D'], ordered=True)
 
-        results = pd.concat(datos.values(), axis=1)
-        if renombrar:
-            results.rename(columns=variables, inplace=True)
+            if len(freqs)>1:  # es necesario convertir frecuencias
+                freq = freq if freq else freqs.min()
+                if callable(func):
+                    func = {codigo: func for codigo in indicadores_válidos.values()}
 
-        return results
+                for nombre, codigo in indicadores_válidos.items():
+                    if freqs[codigo] != freq:
+                        datos[nombre] = datos[nombre].resample(freq).apply(func[codigo])
+
+            results = pd.concat(datos.values(), keys=datos.keys(), axis=1)
+
+            return results
 
 
     def __call__(self, *args, **kwargs):
@@ -290,20 +417,52 @@ class PaginaWeb:
         CAMPOS = ['title', 'subtitle']
         return pd.DataFrame([self.cuadros[campo].str.contains(frase, case=False) for campo in CAMPOS]).any()
 
-    def buscar(self, *, frase=None, todos=None, algunos=None, frecuencia=None):
-        """
-        Buscar palabras en la descripción de las variables en el catálogo.
+    def buscar(self, todos=None, *, frase=None, algunos=None, frecuencia=None):
+        """buscar códigos de indicadores según su descripción
+
         Parameters
         ----------
-        frase
-        todos
-        algunos
-        frecuencia
+        frase, todos, algunos : str
+            texto que debe aparecer en la descripción del indicador. Sólo una de estos tres parámetros debe utilizarse
+            a la vez. 'frase' busca una coincidencia exacta, 'todos' que todas las palabras aparezcan (en cualquier
+            orden), 'algunos' que al menos una de las palabras aparezca. La búsqueda no es sensible a mayúscula/minúscula.
+            Si no se indica un parámetro [por ejemplo, PW.buscar('precios consumidor')], se asume que
+            PW.buscar(todos='precio consumidor')
+        frecuencia : str, optional. uno de ('Q', 'A', 'M', 'D')
+            mostrar solo indicadores que tengan la frecuencia indicada.
 
         Returns
         -------
+        pd.DataFrame
+
+        Examples
+        --------
+
+        Para buscar un indicador que tenga todas las palabras "Índice", "precios", "consumidor" (en cualquier orden)
+
+        >>> from bccr import PW
+        >>> PW.buscar(todos="Índice precios consumidor")
+
+        Para buscar un indicador que tenga la frase exacta "Índice de Precios al Consumidor"
+
+        >>> PW.buscar(frase="Índice de Precios al Consumidor")
+
+        Para buscar un indicador que tenga al menos una de las palabras "exportaciones" e "importaciones"
+
+        >>> PW.buscar(algunos="exportaciones importaciones")
+
+        Para buscar los términos "precios transables", y filtrar que muestre solo resultados con medida "Variación interanual"
+
+        >>> PW.buscar('precios transables', Medida='Variación interanual')
+
+        Para mostrar un breve mensaje de ayuda
+
+        >>> PW.buscar()
+
 
         """
+
+
         CAMPOS = ['title', 'subtitle', 'freq']
 
         if frase:
@@ -340,4 +499,4 @@ class PaginaWeb:
         return self.__str__()
 
 
-PW = PaginaWeb()
+PW = PaginaWeb(pd.read_pickle(PICKLE_FILE))

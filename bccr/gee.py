@@ -102,13 +102,21 @@ class ServicioWeb:
         El correo electrónico registrado por el usuario en el servicio web.
     token : str
         El token recibido por el usuario de parte del BCCR para tener acceso al servicio web.
-    indicadores : pd.DataFrame, optional
+    indicadores : pd.DataFrame
         una table con la descripción de los indicadores disponibles en el servicio web.
 
     Examples
     --------
+    Asumiendo que Ratón Pérez se registró en el servicio web del BCCR:
+
     >>> from bccr import ServicioWeb
-    >>> consulta = ServicioWeb('Ratón Pérez', 'raton.perez@correo.com', '4SDLJUHKEZ')  # si Ratón Pérez se registró en el servicio web
+    >>> consulta = ServicioWeb('Ratón Pérez', 'raton.perez@correo.com', '4SDLJUHKEZ')
+
+    Si Ratón Pérez no se ha registrado en el servicio web del BCCR, entonces simplemente puede usar una instancia
+    predeterminada de `ServicioWeb`, llamada `SW`, que utiliza las credenciales del paquete:
+
+    >>> from bccr import SW
+
     """
     nombre: str
     correo: str
@@ -176,10 +184,11 @@ class ServicioWeb:
         """
         params = self.__usuario__()
         params['Indicador'] = Indicador
-        params['FechaInicio'] = parse_date_parameter(FechaInicio) if FechaInicio else '01/01/1900'
-        params['FechaFinal'] = parse_date_parameter(FechaFinal, False) if FechaFinal else datetime.now().strftime(
+        params['FechaInicio'] = parse_date_parameter(FechaInicio, inicio=True, año_primero=False) if FechaInicio else '01/01/1900'
+        params['FechaFinal'] = parse_date_parameter(FechaFinal, inicio=False, año_primero=False) if FechaFinal else datetime.now().strftime(
             '%d/%m/%Y')
         params['SubNiveles'] = 'N'
+        print(params)
 
         host = 'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos'
         resp = requests.get(host, params)
@@ -242,18 +251,32 @@ class ServicioWeb:
 
         Returns
         -------
+        pd.DataFrame
 
         Examples
         --------
-        >>> buscar(frase="descripción contiene esta frase literalmente")
 
-        >>> buscar(todos="descripción contiene todos estos términos en cualquir orden")
+        Para buscar un indicador que tenga todas las palabras "IMAE", "tendencia", "ciclo" (en cualquier orden)
 
-        >>> buscar(algunos="descripción contiene alguno de estos términos")
+        >>> from bccr import SW
+        >>> SW.buscar("IMAE tendencia ciclo")
 
-        >>> buscar()  # muestra un mensaje de ayuda
+        Para buscar un indicador que tenga la frase exacta "Índice de Precios al Consumidor"
 
-        >>> buscar(todos='precios transables', Medida='Variación interanual')
+        >>> SW.buscar(frase="Índice de Precios al Consumidor")
+
+        Para buscar un indicador que tenga al menos una de las palabras "exportaciones" e "importaciones"
+
+        >>> SW.buscar(algunos="exportaciones importaciones")
+
+        Para buscar los términos "precios transables", y filtrar que muestre solo resultados con medida "Variación interanual"
+
+        >>> SW.buscar('precios transables', Medida='Variación interanual')
+
+        Para mostrar un breve mensaje de ayuda
+
+        >>> SW.buscar()
+
 
         Notes
         -----
@@ -274,8 +297,8 @@ class ServicioWeb:
             Exactamente un parámetro de [frase, todos, algunos] debe ser proporcionado.
             
             Ejemplos de uso:
+                buscar("descripción contiene todos estos términos en cualquir orden")
                 buscar(frase="descripción contiene esta frase literalmente")
-                buscar(todos="descripción contiene todos estos términos en cualquir orden")
                 buscar(algunos="descripción contiene alguno de estos términos")
                 buscar()  # muestra este mensaje de ayuda
             """
@@ -438,10 +461,8 @@ class ServicioWeb:
 
         Examples
         --------
-        >>> consulta = ServicioWeb()
-        >>> consulta.quien(33438)
-
-        >>> consulta.quien(33472)
+        >>> from bccr import SW
+        >>> SW.quien(33438)
         """
         if str(codigo) not in self.indicadores.index:
             print(f'La variable {codigo} no aparece en la lista de indicadores.')
@@ -512,8 +533,8 @@ class ServicioWeb:
 
         Examples
         --------
-        >>> consulta = ServicioWeb
-        >>> consulta.subcuentas(33439)
+        >>> from bccr import SW
+        >>> SW.subcuentas(33439)
         """
         cta = self.indicadores.loc[str(codigo), 'node']
         treestr = RenderTree(cta).by_attr()
@@ -531,12 +552,11 @@ class ServicioWeb:
                 cuentas; en caso de querer indicar un nombre distinto, solicitar el indicador usando el parámetro
                 `indicadores`.
         FechaInicio : str or int, optional
-            fecha de la primera observación a descargar, formato dd/mm/yyyy (valor predeterminado es '01/01/1900'). Si es
-            un int, se interpreta como el primero de enero del año indicado por ese int.
+            fecha de la primera observación a descargar. Ver nota 6 abajo para más detalles.
         FechaFinal : str or int, optional
-            fecha de la última observación a descargar, formato dd/mm/yyyy (valor predeterminado es fecha del sistema).
-            Si es un int, se interpreta como el 31 de diciembre del año indicado por ese int.
-        func : function or dict of functions, optional
+            fecha de la última observación a descargar. Ver nota 6 abajo para más detalles.
+        func : str
+            Una opción de ['mean', 'sum', 'last', 'first', 'nanmean', 'nansum', 'nanlast', 'nanfirst'].
             función que se desea utilizar para transformar la frecuencia de los datos (predeterminado: None).
             Si se especifica una sola función, se usa la misma para todas las series que lo requiera. Para usar funciones
             distintas puede pasar un diccionario {nombre-de-la-serie: funcion-a-usar,...}
@@ -575,23 +595,80 @@ class ServicioWeb:
         5. Las instancias de la clase ServicioWeb son ejecutables: si se llaman como una función, simplemente ejecutan la
         función datos()
 
+        6. El formato de fechas es muy flexible. Por ejemplo, todas estas expresiones son válidas:
+
+        - Para indicar el año 2015: se puede emplear tanto un `int` como un `str`
+
+        >>>   FechaInicio = 2015 # se interpreta como  1 de enero de 2015
+        >>>   FechaFinal = "2015"  # se interpreta como 31 de diciembre de 2015
+
+        - Para indicar el mes marzo de 2017: cualquiera de estas expresiones es válida
+
+         >>> "2017-03"
+         >>> "2017/03"
+         >>> "2017m3"
+         >>> "03/2017"
+         >>> "03-2017"
+
+         En `FechaInicio=` resulta en 1 de marzo de 2017, en `FechaFinal=` resulta en 31 de marzo de 2017.
+
+        - Para indicar el 12 de agosto de 2018:
+
+         >>> "2017/8/12"
+         >>> "2017-08-12"
+         >>> "12/8/2017"
+
+        Observe que para separar los componentes de una fecha se puede usar cualquier caracter no numérico (usualmente `/` o `-`).
+
         Examples
         --------
+        La forma preferible de solicitar los indicadores es como pares de `nombre=código`, de manera que `nombre` se utilice
+        como encabezado de columna en la tabla de datos resultante:
+
         >>> from bccr import SW
-        >>> SW(IMAE=35449, Inflación=25485) # forma preferible
+        >>> SW(IMAE=35449, Inflación=25485)
 
-        >>> SW(35449, 25485)  # forma más rápida
+        Para hacer consultas rápidas, puede simplemente pasarse únicamente los códigos
 
-        >>> SW('35449', '25485')  # funciona, aunque más complicado
+        >>> SW(35449, 25485)
+
+        Observe que si se "ejecuta" la instancia `SW`, simplemente se está ejecutando la función `datos`. Por ello, no es
+        necesario escribir `datos` en los ejemplos anteriores
+
+        >>> SW.datos(35449, 25485) # resultado idéntico al anterior, pero digitando más.
+
+        Si se desea, los códigos pueden escribirse como de tipo `str`:
+
+        >>> SW('35449', '25485')
+
+        Puede también pasarse los códigos en un diccionario. **Advertencia** Esta forma se considera obsoleta, pero se mantiene
+        aún en el paquete para darle soporte a código escrito con versiones anteriores de `bccr`. Nótese que en esta forma, las
+        llaves del diccionario son los códigos, y los valores se usan como encabezado de columna:
 
         >>> cuentas = {33439:'PIB', 33448:'Consumo', 33451:'Gasto', 33457:'Inversión'}
         >>> SW(cuentas)    # esta forma es obsoleta, será eliminada en una versión futura
 
+        Si desea usar diccionarios, la forma preferible de hacer la consulta anterior es (observe cambio de orden en diccionario
+        y que debe desempacarlo con dos asteriscos ** ):
+
+        >>> cuentas = {'PIB': 33439, 'Consumo': 33448, 'Gasto': 33451, 'Inversión':33457}
+        >>> SW(**cuentas)    # es necesario usar ** delante del nombre del diccionario
+        >>> SW(PIB=33439, Consumo=33448, Gasto=33451, Inversión=33457)  # equivalente a las dos líneas anteriores
+
+        Es posible restringir el rango de los datos, usando los parámetros `FechaInicio=` y `FechaFinal=`:
+
         >>> SW(IMAE=35449, Inflación=25485, FechaInicio='2000/01/01')
+
+        En caso de solo señalar el año, se sobrentiende "1 de enero" en el caso de `FechaInicio=` y "31 de diciembre" en `FechaFinal=`
 
         >>> SW(IMAE=35449, Inflación=25485, FechaInicio=2000, FechaFinal=2015)
 
-        >>> SW(IMAE=35449, Inflación=25485, TPM=3541, func=np.mean, fillna='ffill') # IMAE e Inflación son series mensuales,
+        Si se solicitan indicadores que tienen distinta periodicidad, el resultado tendrá la periodicidad del indicador menos frecuente.
+        Para ello, se puede indicar la función para convertir los datos de mayor a menor frecuencia, y si de seben rellenar datos
+        faltantes (por ejemplo, valores faltantes en los fines de semana se pueden intrapolar con el dato del lunes siguiente o
+        del viernes anterior)
+
+        >>> SW(IMAE=35449, Inflación=25485, TPM=3541, func='mean', fillna='ffill') # IMAE e Inflación son series mensuales,
         >>> # miestras que TPM es diaria. TPM se convierte en mensual calculando el promedio, habiendo sustituido los
         >>> # valores faltantes con el último dato disponible
         """
