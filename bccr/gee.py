@@ -188,7 +188,7 @@ class ServicioWeb:
         params['FechaFinal'] = parse_date_parameter(FechaFinal, inicio=False, año_primero=False) if FechaFinal else datetime.now().strftime(
             '%d/%m/%Y')
         params['SubNiveles'] = 'N'
-        print(params)
+
 
         host = 'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos'
         resp = requests.get(host, params)
