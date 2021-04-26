@@ -58,7 +58,7 @@ html_theme = 'alabaster'
 html_theme_options = {
     'logo': 'r2-logo.png',
     'github_user': 'randall-romero',
-    'github_repo': 'econometria',
+    'github_repo': 'bccr',
     'page_width': '100%',
     'sidebar_width': '16%'
 }
