@@ -1,3 +1,25 @@
+"""
+pagina: Un módulo para definir la clase PaginaWeb
+
+Este módulo define la clase PaginaWeb y crea una instancia de la misma, PW. Esta clase permite buscar y descargar cuadros
+de indicadores del sitio web del Banco Central de Costa Rica. (https://www.bccr.fi.cr/indicadores-economicos/) .
+
+La forma usual de utilizar esta clase es
+
+    >>> from bccr import PW
+
+    * para buscar el código de algún indicador de interés, utilice
+
+    >>> PW.buscar("nombre de un indicador")
+
+    * para descargar datos de cuadros 3, 4 y 22 (por ejemplo), hay varias formas de hacerlo
+
+    >>> PW(indicA=4, indicB=7, indicC=231) # pasando los códigos como valores de parámetros, en
+            cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.
+    >>> PW(3, 4, 22)   # pasando los códigos directamente
+"""
+
+
 from dataclasses import dataclass
 import pandas as pd
 import numpy as np
@@ -15,18 +37,7 @@ BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
 PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl')
 
-FRASE_AYUDA = """
-CLASE PaginaWeb
 
-Esta clase permite buscar y descargar cuadros de indicadores del sitio web del Banco Central de Costa Rica.
-Suponiendo que el objeto de clase PaginaWeb se llama "consulta":
-    * para buscar cuadros, utilice 
-        consulta.buscar()
-    * para descargar datos de cuadros 4, 7 y 231 (por ejemplo), hay varias formas de hacerlo 
-        consulta(4, 7, 231)   # pasando los códigos directamente
-        consulta([4, 7, 231]) # pasando los códigos en una lista
-        consulta({'4':'indicA', '7':'indicB', '231':'indicC'} # pasando los códigos en un diccionario        
-"""
 
 @dataclass
 class PaginaWeb:
@@ -493,10 +504,12 @@ class PaginaWeb:
             return self.cuadros[temp][CAMPOS]
 
     def __str__(self):
-        return FRASE_AYUDA
+        return "Clase PaginaWeb: permite buscar y descargar datos del sitio de indicadores económicos del Banco Central de Costa Rica."
 
     def __repr__(self):
         return self.__str__()
 
 
+#: bccr.PaginaWeb: Este es un objeto de clase `PaginaWeb` con parámetros de inicialización predeterminados. Puede
+#: importarse en una sesión simplemente con `from bccr import PW`.
 PW = PaginaWeb(pd.read_pickle(PICKLE_FILE))

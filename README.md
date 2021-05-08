@@ -14,7 +14,7 @@ Independientemente de la clase utilizada, los datos se descargan y se presentan 
 ## Breves indicaciones acerca del uso del paquete
 Las API de ambas clases son similares. En esencia, se crea un objeto consulta y se utiliza para buscar códigos de indicadores (los cuales difieren según se trate del Servicio Web o de la página de indicadores económicos).
 
-Este [video de YouTube](https://youtu.be/XLlr9XItfDE) contiene un tutorial acerca de cómo utilizar el paquete.
+Este [video de YouTube](https://youtu.be/eB8YCQ-nn1g) contiene un tutorial acerca de cómo utilizar el paquete.
 
 ### Usando ServicioWeb 
 

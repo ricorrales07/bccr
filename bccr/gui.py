@@ -40,6 +40,7 @@ En esta versión, la interfase solo permite descargar datos a través del `Servi
 
 Los datos se descargan y se presentan en una tabla en formato *tidy*, en la cual cada fila corresponde a un período (día, mes, trimestre, año) y cada columna a un indicador. 
 
+Este [video de YouTube](https://youtu.be/eB8YCQ-nn1g) contiene un tutorial acerca de cómo utilizar el paquete.
 ---
 
 ## Parámetros de búsqueda (panel izquierdo):

@@ -48,29 +48,10 @@ DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
 PICKLE_FILE = os.path.join(DATA_FOLDER, 'indicadores.pkl')
 EXCEL_FILE =  os.path.join(DATA_FOLDER, 'Indicadores.xlsx')
 
-FRASE_AYUDA = """
-CLASE ServicioWeb
-
-Esta clase permite buscar y descargar datos de indicadores del servicio web del Banco Central de Costa Rica.
-
-Suponiendo que el objeto de clase ServicioWeb se llama "SW":
-
-    * para buscar indicadores, utilice 
-        SW.buscar("nombre de un indicador")
-    * para saber más detalles del indicador 8 (por ejemplo)
-        SW.quien(8)
-    * para buscar las subcuentas de un indicador, digamos el 784
-        SW.subcuentas(784)      
-    * para descargar datos de indicadors 4, 7 y 231 (por ejemplo), hay varias formas de hacerlo 
-        SW(4, 7, 231)   # pasando los códigos directamente
-        SW(indicA=4, indicB=7, indicC=231) # pasando los códigos como valores de parámetros, en 
-            cuyo caso los indicadores son renombrados como 'indicA', 'indicB' y 'indicC', respectivamente.        
-    
-"""
 
 
-
-
+#: dict of functions: Diccionario que mapea nombres de funciones a objetos de función. Se utilizan para cambiar de
+#: frecuencia los datos
 FUNCS = {
     'mean': lambda df: np.mean(df.values),
     'sum': lambda df: np.sum(df.values),
@@ -766,12 +747,14 @@ class ServicioWeb:
         return self.datos(*args, **kwargs)
 
     def __str__(self):
-        return FRASE_AYUDA
+        return "Clase ServicioWeb: permite buscar y descargar datos de indicadores del servicio web del Banco Central de Costa Rica."
+
 
     def __repr__(self):
         return self.__str__()
 
-
+#: bccr.ServicioWeb: Este es un objeto de clase `ServicioWeb` con parámetros de inicialización predeterminados. Puede
+#: importarse en una sesión simplemente con `from bccr import SW`.
 SW = ServicioWeb(nombre = 'Paquete BCCR Python',
                  correo = 'paquete.bccr.python@outlook.com',
                  token = '5CMRCBTHMT',
