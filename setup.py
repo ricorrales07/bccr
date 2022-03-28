@@ -11,7 +11,7 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='bccr',
-    version='2021.05.1',
+    version='2022.03.27',
     description='Herramientas para descargar datos del Banco Central de Costa Rica',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -21,8 +21,17 @@ setup(
     license='MIT',
     keywords='BCCR datos',
     packages=['bccr', 'demos', ],
-    python_requires='>=3.7',
-    install_requires=['pandas', 'numpy', 'anytree',  'requests', 'beautifulsoup4', 'plotly', 'dash', 'dash-extensions', 'jupyter-dash'],
+    python_requires='>=3.8',
+    install_requires=[
+        'pandas',
+        'numpy',
+        'anytree',
+        'requests',
+        'beautifulsoup4',
+        'plotly',
+        'dash>=2.2.0',
+        'dash-extensions',
+        'jupyter-dash'],
     package_data={'bccr': ['data/indicadores.pkl', 'data/indicators.pkl', 'data/cuadros.pkl']},
     include_package_data=True
 )

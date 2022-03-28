@@ -1,12 +1,12 @@
 from jupyter_dash import JupyterDash
 import pandas as pd
 from dash.dependencies import Input, Output, State
-import dash_table
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dash_table
+from dash import dcc
+from dash import html
 from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
-from dash_table.Format import Format, Scheme
+from dash.dash_table.Format import Format, Scheme
 import plotly.express as px
 from bccr import SW
 import io
