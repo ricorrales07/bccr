@@ -1,7 +1,7 @@
 """ The bccr package setup.
 Based on setuptools
 
-Randall Romero-Aguilar, 2015-2021
+Randall Romero-Aguilar, 2015-2022
 """
 
 from setuptools import setup
@@ -11,7 +11,7 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='bccr',
-    version='2022.04.25',
+    version='2022.04.26',
     description='Herramientas para descargar datos del Banco Central de Costa Rica',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -21,7 +21,7 @@ setup(
     license='MIT',
     keywords='BCCR datos',
     packages=['bccr', 'demos', ],
-    python_requires='>=3.8',
+    python_requires='>=3.7',
     install_requires=[
         'pandas',
         'numpy',
