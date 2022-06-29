@@ -262,7 +262,7 @@ app.layout = html.Div([
                                      filter_action='native',
                                      columns=[
                                          {'name': 'Código', 'id': 'codigo'},
-                                         {'name': 'Descripción', 'id': 'descripcion'},
+                                         #{'name': 'Descripción', 'id': 'descripcion'}, ya no se reporta
                                          {'name': 'Ruta', 'id': 'DESCRIPCION'},
                                          {'name': 'Unidad', 'id': 'Unidad'},
                                          {'name': 'Medida', 'id': 'Medida'},

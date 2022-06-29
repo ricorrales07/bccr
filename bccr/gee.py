@@ -217,7 +217,7 @@ class ServicioWeb:
         CAMPOS = ['DESCRIPCION', 'descripcion']
         return pd.DataFrame([self.indicadores[campo].str.contains(frase, case=False) for campo in CAMPOS]).any()
 
-    def buscar(self, todos=None, *, frase=None, algunos=None, frecuencia=None, Unidad=None, Medida=None, periodo=None):
+    def buscar(self, todos=None, *, frase=None, algunos=None, frecuencia=None, Unidad=None, Medida=None, periodo=None, subcuentas=False):
 
         """buscar códigos de indicadores según su descripción
 
@@ -237,6 +237,8 @@ class ServicioWeb:
             mostrar solo indicadores que tengan la medida indicada
         periodo: str, optional
             mostrar solo indicadores que tengan la periodicidad indicada
+        subcuentas: bool, optional (False)
+            incluir subcuentas de cuentas que ya aparecen en los resultados     
 
         Returns
         -------
@@ -249,6 +251,10 @@ class ServicioWeb:
 
         >>> from bccr import SW
         >>> SW.buscar("IMAE tendencia ciclo")
+
+        Para incluir subcuentas de "IMAE tendencia ciclo" en los resultados
+
+        >>> SW.buscar("IMAE tendencia ciclo", subcuentas=True)
 
         Para buscar un indicador que tenga la frase exacta "Índice de Precios al Consumidor"
 
@@ -272,7 +278,8 @@ class ServicioWeb:
         El parámetro 'frecuencia' será discontinuado en algún momento. Se recomienda usar el parámetro 'periodo' para
         cumplir la misma funcionalidad.
         """
-        CAMPOS = ['DESCRIPCION', 'descripcion', 'Unidad','Medida','periodo']
+        #CAMPOS = ['DESCRIPCION', 'descripcion', 'Unidad','Medida','periodo']
+        CAMPOS = ['DESCRIPCION', 'Unidad','Medida','periodo'] # "description" parece ser inconsistente
 
         if frase:
             temp = self.__buscar_frase__(frase)
@@ -304,6 +311,15 @@ class ServicioWeb:
             results.query('Medida == @Medida', inplace=True)
         if periodo:
             results.query('periodo == @periodo', inplace=True)
+
+        # filtrar subcuentas
+        if not subcuentas:
+            todos = list(self.indicadores.loc[results.index,'node'])
+            results = results.loc[[registro.parent not in todos for registro in todos]]
+
+        # Abreviar ruta para ahorrar espacio
+        results['DESCRIPCION'] = results['DESCRIPCION'].apply(str).str.slice(12,-1)
+
 
         return results[CAMPOS]
 
