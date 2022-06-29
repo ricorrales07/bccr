@@ -154,7 +154,7 @@ class ServicioWeb:
             número del indicador a descargar.
         FechaInicio : int or str, optional
             fecha de la primera observación a descargar,
-            int -> año, o str -> yyyy/mm/dd (valor predeterminado es '1990/01/01')
+            int -> año, o str -> yyyy/mm/dd (valor predeterminado es '1900/01/01')
         FechaFinal : str, optional
             fecha de la última observación a descargar, formato dd/mm/yyyy (valor predeterminado es fecha del sistema)
 
@@ -495,7 +495,7 @@ class ServicioWeb:
             return infer_frequency(serie)
 
 
-    def subcuentas(self, codigo):
+    def subcuentas(self, codigo, arbol=True):
         """Subcuentas de un indicador
 
         Algunos indicadores pueden desagregarse (por ejemplo, el IMAE total se puede desagregar por actividad económica).
@@ -505,12 +505,14 @@ class ServicioWeb:
         ----------
         codigo : str or int
             código numérico del indicador del que se desea conocer sus subcuentas.
+        arbol: bool, (=True, opcional)
+            Imprime árbol de subcuentas si True.
 
         Returns
         -------
         list:
             Los códigos de las subcuentas.
-            Además, el resultado se imprime a pantalla como un árbol de cuentas.
+            Además, el resultado se imprime a pantalla como un árbol de cuentas (si arbol=True).
 
         Examples
         --------
@@ -519,7 +521,9 @@ class ServicioWeb:
         """
         cta = self.indicadores.loc[str(codigo), 'node']
         treestr = RenderTree(cta).by_attr()
-        print(treestr)
+        if arbol:
+            print(treestr)
+        
         return re.findall('\[([0-9]+)\]', treestr)
 
     def datos(self, *codigos, FechaInicio=None, FechaFinal=None, func=None, freq=None, fillna=None, **indicadores):
