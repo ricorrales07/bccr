@@ -274,9 +274,17 @@ app.layout = html.Div([
                      # PANEL 4: QUIÉN ES ESTE INDICADOR================================================
                      dcc.Tab(label='¿Quién?',
                              children=[
+                                 dcc.Markdown("Código de cuenta ⇒"),
                                  dcc.Input(
                                      id='quién-es-código',
                                      placeholder='Código...',
+                                     value='',
+                                     style={'padding': 10, 'width': '10%'}
+                                 ),
+                                 dcc.Markdown("Número de subniveles en subcuentas ⇒"),
+                                 dcc.Input(
+                                     id='profundidad-arbol',
+                                     placeholder='(opcional: 1,2,...8)',
                                      value='',
                                      style={'padding': 10, 'width': '10%'}
                                  ),
@@ -336,17 +344,19 @@ def add_row(n_clicks, rows, columns):
     Output('subcuentas', 'value'),
     Input('quién-button', 'n_clicks'),
     State('quién-es-código', 'value'),
+    State('profundidad-arbol', 'value'),
 )
-def quién_subcuentas(n_clicks, código):
+def quién_subcuentas(n_clicks, código, maxlevel):
 
     if código in SW.indicadores.index:
+        maxlevel = int(maxlevel if maxlevel else 9)
 
         with io.StringIO() as buf, redirect_stdout(buf):
             SW.quien(código)
             quien = buf.getvalue()
 
         with io.StringIO() as buf, redirect_stdout(buf):
-            SW.subcuentas(código)
+            SW.subcuentas(código, maxlevel=maxlevel)
             subcuentas = buf.getvalue()
     elif código == '':
         quien = subcuentas = f'Escriba el código deseado en el espacio de arriba.'

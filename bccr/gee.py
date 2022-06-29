@@ -105,6 +105,13 @@ class ServicioWeb:
     token: str
     indicadores: pd.DataFrame
 
+    def __post_init__(self):
+        self.indicadores['medida'].fillna(1, inplace=True)  # el catálogo actual del banco omite esta información en muchos registros
+
+
+
+
+
     def __usuario__(self):
         """Credenciales de usuario
 
@@ -496,7 +503,7 @@ class ServicioWeb:
             return infer_frequency(serie)
 
 
-    def subcuentas(self, codigo, arbol=True):
+    def subcuentas(self, codigo, *, maxlevel=9, arbol=True):
         """Subcuentas de un indicador
 
         Algunos indicadores pueden desagregarse (por ejemplo, el IMAE total se puede desagregar por actividad económica).
@@ -506,6 +513,8 @@ class ServicioWeb:
         ----------
         codigo : str or int
             código numérico del indicador del que se desea conocer sus subcuentas.
+        maxlevel : int (=9, opcional)
+            profundidad del árbol. 1= solo ramas directas ("hijos"), 2=incluir "nietos", 3=...
         arbol: bool, (=True, opcional)
             Imprime árbol de subcuentas si True.
 
@@ -521,7 +530,7 @@ class ServicioWeb:
         >>> SW.subcuentas(33439)
         """
         cta = self.indicadores.loc[str(codigo), 'node']
-        treestr = RenderTree(cta).by_attr()
+        treestr = RenderTree(cta, maxlevel=1+maxlevel).by_attr()
         if arbol:
             print(treestr)
         
