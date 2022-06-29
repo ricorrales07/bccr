@@ -4,6 +4,7 @@ from dash.dependencies import Input, Output, State
 from dash import dash_table
 from dash import dcc
 from dash import html
+# import bootstrap_components as dbc  #todo: sería una extensión interesante
 from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
 from dash.dash_table.Format import Format, Scheme
@@ -17,6 +18,11 @@ from datetime import date
 import webbrowser
 
 DATOS_PARA_DESCARGAR = [pd.DataFrame()]
+
+UNIDADES = SW.indicadores['Unidad'].value_counts().index.to_list()
+PERIODICIDAD = SW.indicadores['periodo'].value_counts().index.to_list()
+
+
 
 
 # Esta parte controla asuntos de estética de la página
@@ -235,9 +241,21 @@ app.layout = html.Div([
                                      id='buscar-códigos',
                                      placeholder='Escriba acá los términos que desea buscar...',
                                      value='',
-                                     style={'padding': 10, 'width': '50%'}
+                                     style={'padding': 10, 'width': '25%'}
                                  ),
-                                 html.Button('Buscar', id='buscar-códigos-button', n_clicks=0),
+                                 dcc.Dropdown(
+                                    id='filtrar-unidades',
+                                    options=[dict(label= valor, value=valor) for valor in [''] + UNIDADES],
+                                    value='',
+                                    style={'padding': 10, 'width': '25%', "display": "inline-block"}
+                                 ), # fin de función para filtrar unidades
+                                 dcc.Dropdown(
+                                        id='filtrar-periodos',
+                                        options=[dict(label= valor, value=valor) for valor in [''] + PERIODICIDAD],
+                                        value='',
+                                        style={'padding': 10, 'width': '25%', "display": "inline-block"}
+                                    ), # fin de función para filtrar periodos
+                                 dcc.Markdown('Tipo de búsqueda'),
                                  dcc.RadioItems(
                                      id='tipo-búsqueda',
                                      options=[
@@ -248,6 +266,17 @@ app.layout = html.Div([
                                      value='todos',
                                      labelStyle={'display': 'inline-block'}
                                  ),
+                                 dcc.Markdown('Incluir subcuentas'),
+                                 dcc.RadioItems(
+                                     id='incluir-subcuentas',
+                                     options=[
+                                         {'label': 'No', 'value': 'No'},
+                                         {'label': 'Sí', 'value': 'Sí'}
+                                     ],
+                                     value='No',
+                                     labelStyle={'display': 'inline-block'}
+                                 ),
+                                 html.Button('Buscar', id='buscar-códigos-button', n_clicks=0),
                                  dcc.Textarea(id='buscar-mensaje',
                                               value='Ingrese los términos deseados en el cuadro de arriba',
                                               readOnly=True,
@@ -378,12 +407,16 @@ def quién_subcuentas(n_clicks, código, maxlevel):
     Input('buscar-códigos-button', 'n_clicks'),
     State('buscar-códigos', 'value'),
     State('tipo-búsqueda', 'value'),
+    State('filtrar-unidades', 'value'),
+    State('filtrar-periodos', 'value'),
+    State('incluir-subcuentas', 'value'),
 )
-def mostrar_códigos(n_clicks, frase, tipo):
+def mostrar_códigos(n_clicks, frase, tipo,unidades,periodos,subcuentas):
+    subcuentas = (subcuentas=='Sí')
 
     if frase:
         # Acomodar la lista de indicadores
-        resultados = SW.buscar(**{tipo: frase})
+        resultados = SW.buscar(**{tipo: frase}, Unidad=unidades, periodo=periodos, subcuentas=subcuentas)
 
         # Acomodar los datos descargados como un diccionario, para que lo lea dash
         tabla = resultados.reset_index().to_dict(orient='records')
@@ -418,7 +451,7 @@ def display_output(n_clicks, rows, FechaInicio, FechaFinal, freq, func, fillna):
 
     # Acomodar la lista de indicadores
     indicadores = dict()
-    for item in rows:
+    for item in rows:       
         indicadores[item['nombre']] = item['código']
 
     # Interpretar parámetros freq y fillna
