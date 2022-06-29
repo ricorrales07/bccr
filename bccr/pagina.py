@@ -35,8 +35,8 @@ from .fetch import FIRST_OBSERVATION
 
 BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
-PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl')
-
+PICKLE_FILE = os.path.join(DATA_FOLDER, 'cuadros.pkl') # en desuso, servirá para cuando se actualice localmente el catálogo
+PICKLE_FILE_ONLINE = "https://github.com/randall-romero/bccr/raw/main/bccr/data/cuadros.pkl" # Para mantener catálogo actualizado
 
 
 @dataclass
@@ -512,4 +512,4 @@ class PaginaWeb:
 
 #: bccr.PaginaWeb: Este es un objeto de clase `PaginaWeb` con parámetros de inicialización predeterminados. Puede
 #: importarse en una sesión simplemente con `from bccr import PW`.
-PW = PaginaWeb(pd.read_pickle(PICKLE_FILE))
+PW = PaginaWeb(pd.read_pickle(PICKLE_FILE_ONLINE))

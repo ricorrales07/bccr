@@ -45,8 +45,9 @@ import warnings
 
 BCCR_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(BCCR_FOLDER, 'data')
-PICKLE_FILE = os.path.join(DATA_FOLDER, 'indicadores.pkl')
-EXCEL_FILE =  os.path.join(DATA_FOLDER, 'Indicadores.xlsx')
+PICKLE_FILE = os.path.join(DATA_FOLDER, 'indicadores.pkl') # para cuando se actualice localmente el catálogo
+PICKLE_FILE_ONLINE = "https://github.com/randall-romero/bccr/raw/main/bccr/data/indicadores.pkl" # Para mantener catálogo actualizado
+EXCEL_FILE =  'Indicadores.xlsx' # Para actualizar catálogo
 
 
 
@@ -762,4 +763,4 @@ class ServicioWeb:
 SW = ServicioWeb(nombre = 'Paquete BCCR Python',
                  correo = 'paquete.bccr.python@outlook.com',
                  token = '5CMRCBTHMT',
-                 indicadores = pd.read_pickle(PICKLE_FILE))
+                 indicadores = pd.read_pickle(PICKLE_FILE_ONLINE))
