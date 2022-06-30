@@ -318,7 +318,7 @@ class ServicioWeb:
             results = results.loc[[registro.parent not in todos for registro in todos]]
 
         # Abreviar ruta para ahorrar espacio
-        results['DESCRIPCION'] = results['DESCRIPCION'].apply(str).str.slice(12,-1)
+        results.loc[:, 'DESCRIPCION'] = results['DESCRIPCION'].apply(str).str.slice(12, -1)
 
 
         return results[CAMPOS]

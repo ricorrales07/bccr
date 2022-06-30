@@ -1,6 +1,8 @@
 Documentación del paquete bccr
 ================================
 
+ESTA VERSIÓN: 2022-06-29
+
 Contenido
 ---------
 .. toctree::
@@ -31,7 +33,7 @@ El paquete ofrece dos clases para trabajar en Python, `ServicioWeb` y `PaginaWeb
 * `PaginaWeb`: descarga cuadros individuales (algunos con un solo indicador, otros con varios), de la página de `indicadores económicos <https://www.bccr.fi.cr/indicadores-economicos>`_.
 * `GUI`: interfase gráfica, basada en la clase `ServicioWeb`.
 
-|
+El paquete está disponible en `PYPI <https://pypi.org/project/bccr/>`. Para instalarlo, simplemente ejecute `pip install bccr --upgrade` en una ventana de sistema. 
 |
 
 ADVERTENCIA:
@@ -42,7 +44,7 @@ Este paquete **NO** es un producto oficial de BCCR. El autor lo provee para faci
 |
 
 Autor:
-^^^^^
+^^^^^^
 **Randall Romero Aguilar**.
 
 Si desea reportarme un fallo en esta herramienta, o bien sugerirme alguna mejora, por favor escríbame al correo `randall.romero@outlook.com <mailto:randall.romero@outlook.com>`_ .
