@@ -1,5 +1,7 @@
 # bccr
 
+Nota: la versión original de este paquete fue creada por Randall Romero (https://github.com/randall-romero). Esta versión solo agrega funcionalidad para usarlo detrás de un proxy corporativo.
+
 ## Una API de Python para descargar datos del Banco Central de Costa Rica
 
 El propósito de este paquete es proveer herramientas para buscar y descargar indicadores publicados por el [Banco Central de Costa Rica](https://www.bccr.fi.cr/).
